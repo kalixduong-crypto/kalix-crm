@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KALIX CRM</title>
+<script>window.tailwindConfig={corePlugins:{preflight:true}};</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- ✅ Thêm Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--g:#D4AF37;--gd:#b8941e;--sw:230px;--sc:12px;}
+*{font-family:'Inter',sans-serif;box-sizing:border-box;}
+body{background:#f7f8fa;color:#111827;margin:0;overflow-x:hidden;}
+
+/* SIDEBAR */
+#sidebar{width:var(--sw);min-height:100vh;background:#0d0d0d;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1);transform:translateX(calc(-1*var(--sw) + var(--sc)));}
+#sidebar:hover{transform:translateX(0);}
+.sl-logo{padding:28px 24px 20px;border-bottom:1px solid #222;}
+.sl-logo b{color:var(--g);font-size:26px;font-weight:900;letter-spacing:-1px;display:block;}
+.sl-logo small{color:#555;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+nav a{display:flex;align-items:center;gap:10px;padding:12px 24px;font-size:12.5px;font-weight:600;color:#6b7280;text-decoration:none;border-left:3px solid transparent;transition:all .18s;cursor:pointer;white-space:nowrap;}
+nav a svg{flex-shrink:0;opacity:.7;}
+nav a:hover{color:#e5e7eb;background:#161616;}
+nav a.active{color:var(--g);border-left-color:var(--g);background:#1a1700;}
+nav a.active svg{opacity:1;}
+.sl-tip{margin:10px 14px;background:#1a1700;border:1px solid #2a2200;border-radius:8px;padding:10px 13px;font-size:10px;color:#555;line-height:1.6;}
+.sl-foot{margin-top:auto;padding:20px 24px;border-top:1px solid #1f1f1f;display:flex;align-items:center;gap:10px;}
+.ava{width:36px;height:36px;border-radius:50%;background:var(--g);color:#000;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* MAIN */
+#main{margin-left:var(--sc);min-height:100vh;padding-bottom:60px;}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:11px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;box-shadow:0 1px 4px rgba(0,0,0,.04);gap:10px;flex-wrap:wrap;}
+.tab-section{display:none;padding:20px 26px;}
+.tab-section.active{display:block;}
+
+/* SYNC BADGE */
+.sbadge{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:5px 11px;border-radius:999px;border:1.5px solid;transition:.3s;white-space:nowrap;cursor:pointer;}
+.sb-ok{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;}
+.sb-ing{background:#fef9e7;color:var(--gd);border-color:#f5e99a;cursor:default;}
+.sb-err{background:#fee2e2;color:#dc2626;border-color:#fecaca;}
+.sb-off{background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sb-ok .sdot{background:#22c55e;animation:pulse 2s infinite;}
+.sb-ing .sdot{background:var(--g);animation:pulse .7s infinite;}
+.sb-err .sdot{background:#ef4444;}
+.sb-off .sdot{background:#9ca3af;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+/* TABLE */
+.tw{overflow-x:auto;border-radius:12px;border:1px solid #e5e7eb;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+table{width:100%;border-collapse:collapse;min-width:1520px;}
+th{background:#f9fafb;padding:9px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap;}
+td{padding:6px 10px;font-size:12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;}
+tbody tr:hover{background:#fdfbf0;}
+
+/* Inline inputs */
+.ii{border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:5px;font-size:11.5px;width:100%;transition:.14s;color:#374151;font-family:'Inter',sans-serif;outline:none;}
+.ii:hover{border-color:#e5e7eb;background:#fff;}
+.ii:focus{border-color:var(--g);background:#fff;box-shadow:0 0 0 3px rgba(212,175,55,.1);}
+textarea.ii{resize:none;height:40px;line-height:1.5;}
+
+/* Status dropdowns */
+select.sd{appearance:none;cursor:pointer;padding:3px 18px 3px 7px;border-radius:6px;font-size:10px;font-weight:700;border:1.5px solid transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 3px center;background-size:9px;outline:none;}
+.sd-done{color:#16a34a;background:#dcfce7;border-color:#86efac!important;}
+.sd-overdue{color:#dc2626;background:#fee2e2;border-color:#fca5a5!important;}
+.sd-pending{color:#d97706;background:#fef3c7;border-color:#fcd34d!important;}
+.sd-none{color:#6b7280;background:#f3f4f6;border-color:#e5e7eb!important;}
+
+/* Material dropdown */
+select.mat-dd{appearance:none;cursor:pointer;padding:3px 18px 3px 6px;border-radius:5px;font-size:11px;font-weight:700;border:1px solid transparent;color:#b8941e;background:#fef9e7;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8941e' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 3px center;background-size:9px;outline:none;}
+select.mat-dd:hover{border-color:var(--g);}
+
+/* CSAT compact dropdown */
+select.csat-dd{appearance:none;cursor:pointer;padding:2px 3px;border:none;background:transparent;font-size:12px;font-weight:800;color:var(--g);outline:none;text-align:center;max-width:56px;}
+select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
+
+/* Dept multi */
+.dept-trigger{display:flex;align-items:center;gap:3px;flex-wrap:wrap;cursor:pointer;padding:3px 7px;border-radius:6px;border:1px solid #e5e7eb;background:#f9fafb;min-width:100px;min-height:26px;transition:.14s;}
+.dept-trigger:hover{border-color:var(--g);background:#fffbeb;}
+.dept-tag{background:#e5e7eb;color:#374151;border-radius:4px;font-size:9.5px;font-weight:700;padding:2px 5px;white-space:nowrap;}
+.dept-empty{color:#9ca3af;font-size:10.5px;}
+#dept-float{position:fixed;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.13);z-index:800;min-width:150px;padding:5px 0;}
+.dept-opt{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;}
+.dept-opt:hover{background:#fef9e7;}
+.dept-opt input[type=checkbox]{width:13px;height:13px;accent-color:var(--g);cursor:pointer;flex-shrink:0;}
+
+.zalo{background:#0068ff;color:#fff;padding:2px 8px;border-radius:5px;font-size:9.5px;font-weight:700;text-decoration:none;display:inline-block;}
+.zalo:hover{background:#0055cc;}
+
+/* Filter bar */
+.fbar{display:flex;align-items:center;gap:7px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:9px;padding:5px 10px;transition:.18s;}
+.fbar label{font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+.fbar select,.fbar input[type=date]{background:transparent;border:none;outline:none;font-size:11.5px;font-weight:600;color:#374151;cursor:pointer;font-family:'Inter',sans-serif;}
+.fbar-on{border-color:var(--g)!important;background:#fffbeb!important;}
+
+/* Stat cards */
+.scard{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.sc-g::before{background:var(--g);}.sc-gr::before{background:#22c55e;}.sc-bl::before{background:#3b82f6;}.sc-re::before{background:#ef4444;}.sc-pu::before{background:#8b5cf6;}
+
+/* Context menu */
+#ctx-menu{position:fixed;display:none;background:#fff;border:1px solid #e5e7eb;box-shadow:0 10px 30px rgba(0,0,0,.13);border-radius:10px;z-index:600;width:165px;overflow:hidden;padding:4px 0;}
+.cx{padding:9px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:7px;}
+.cx:hover{background:#f9fafb;}.cx-d{color:#ef4444!important;}
+
+/* Modals */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+.mbg.open{display:flex;}
+.mcard{background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.22);overflow:hidden;}
+.mh{background:#0d0d0d;padding:20px 26px;display:flex;align-items:center;justify-content:space-between;}
+.mh h2{color:var(--g);font-size:15px;font-weight:800;margin:0;}
+.mhx{background:none;border:none;color:#9ca3af;font-size:22px;cursor:pointer;line-height:1;padding:0;}
+.mhx:hover{color:#fff;}
+.mbody{padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.mbody .full{grid-column:span 2;}
+.fl{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block;}
+.fld{border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 11px;font-size:13px;width:100%;color:#111;transition:.18s;outline:none;appearance:none;font-family:'Inter',sans-serif;}
+.fld:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(212,175,55,.12);}
+.mf{padding:14px 24px;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:10px;}
+.bc{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;}
+.bs{background:var(--g);color:#000;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;}
+.bs:hover{background:var(--gd);color:#fff;}
+
+/* Delete confirm */
+#del-modal .mcard{width:400px;}
+.del-hdr{background:#0d0d0d;padding:18px 24px;display:flex;align-items:center;gap:10px;}
+.del-body{padding:20px 24px;}
+.del-foot{padding:13px 24px;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:10px;}
+.btn-no{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:9px 17px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-no:hover{background:#e5e7eb;}
+.btn-yes{background:#ef4444;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:800;cursor:pointer;}
+.btn-yes:hover{background:#dc2626;}
+
+/* Setup */
+.step-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:13px 15px;margin-bottom:10px;}
+.step-num{background:var(--g);color:#000;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:8px;}
+.tr{margin-top:10px;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:600;display:none;}
+.tr-ok{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+.tr-err{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
+
+/* Misc */
+.dot-live{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 1.8s infinite;}
+.gold-tag{background:#fef9e7;color:var(--gd);border:1px solid #f5e99a;border-radius:999px;font-size:10px;font-weight:700;padding:2px 9px;}
+.search-i{border:1.5px solid #e5e7eb;border-radius:9px;padding:7px 12px;font-size:12px;width:210px;outline:none;transition:.18s;}
+.search-i:focus{border-color:var(--g);}
+.add-btn{background:#111;color:#fff;padding:8px 15px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;}
+.add-btn:hover{background:var(--g);color:#000;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px;}
+</style>
+</head>
+<body onclick="hideCtx();closeDeptFloat(event)">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sl-logo"><b>KALIX</b><small>CRM Platform</small></div>
+  <nav class="mt-4 flex flex-col gap-1">
+    <a onclick="showTab('master')" id="nav-master" class="active">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Master Data
+    </a>
+    <a onclick="showTab('dashboard')" id="nav-dashboard">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>Tổng quan
+    </a>
+    <a onclick="showTab('impact')" id="nav-impact">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Đánh giá Hiệu quả
+    </a>
+  </nav>
+  <div class="sl-tip">☰ Rê chuột vào mép trái để mở menu</div>
+  <div class="sl-foot">
+    <div class="ava">NK</div>
+    <div><div style="font-size:12px;font-weight:700;color:#e5e7eb;">Ngân Kalix</div><div style="font-size:10px;color:#555;">Phòng CSKH</div></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div style="flex-shrink:0;">
+      <div style="font-size:15px;font-weight:800;" id="topbar-title">Master Data</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:1px;"><span class="dot-live"></span> <span id="cust-count">0</span> khách hàng</div>
+    </div>
+    <div class="fbar" id="fbar" style="flex:1;max-width:360px;">
+      <label>Lọc:</label>
+      <select id="filter-type" onchange="applyFilter()" style="min-width:105px;">
+        <option value="none">Tất cả</option>
+        <option value="date">Ngày giao</option>
+        <option value="recall">Ngày gọi lại</option>
+        <option value="warranty">Hạn bảo hành</option>
+      </select>
+      <span style="color:#d1d5db;">|</span>
+      <input type="date" id="filter-date" onchange="applyFilter()">
+      <button onclick="clearFilter()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:14px;padding:0;">✕</button>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center;flex-shrink:0;">
+      <div class="sbadge sb-off" id="sync-badge" onclick="onBadgeClick()">
+        <span class="sdot"></span><span id="sync-lbl">Đang kết nối...</span>
+      </div>
+      <input type="text" id="search-box" class="search-i" oninput="applyFilter()" placeholder="🔍 Tìm tên, SĐT, tỉnh thành...">
+      <button class="add-btn" onclick="openModal(null)">+ Khách hàng mới</button>
+    </div>
+  </div>
+
+  <!-- TAB 1: MASTER DATA -->
+  <div id="tab-master" class="tab-section active">
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th style="width:28px;text-align:center;">#</th>
+          <th style="min-width:148px;">Khách hàng</th>
+          <th style="min-width:102px;">SĐT</th>
+          <th style="width:52px;text-align:center;">Zalo</th>
+          <th style="min-width:128px;">Chất liệu</th>
+          <th style="min-width:100px;">Ngày giao</th>
+          <th style="min-width:100px;">Gọi lại</th>
+          <th style="min-width:100px;">Bảo hành</th>
+          <th style="min-width:104px;">C01</th>
+          <th style="min-width:104px;">C06</th>
+          <th style="min-width:104px;">C12</th>
+          <th style="width:60px;text-align:center;">CSAT</th>
+          <th style="min-width:128px;">Bộ phận</th>
+          <th style="min-width:200px;">Ghi chú</th>
+          <th style="width:26px;"></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="filter-notice" style="display:none;margin-top:8px;font-size:11px;color:var(--gd);font-weight:600;padding-left:2px;"></div>
+    <p style="font-size:10px;color:#9ca3af;margin-top:7px;padding-left:2px;">💡 Click ô để chỉnh · Chuột phải / ⋮ để Sửa / Xóa · Bộ phận: tích nhiều · ⚡ Realtime Supabase</p>
+  </div>
+
+  <!-- TAB 2: TỔNG QUAN -->
+  <div id="tab-dashboard" class="tab-section">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;">
+      <div class="scard sc-g"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;">Tổng KH</div><div style="font-size:28px;font-weight:900;color:var(--g);margin-top:5px;" id="s-total">0</div></div>
+      <div class="scard sc-gr"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;">C01 Hoàn thành</div><div style="font-size:28px;font-weight:900;color:#22c55e;margin-top:5px;" id="s-c01">0%</div><div style="font-size:10px;color:#86efac;margin-top:2px;font-weight:600;" id="s-c01s">0/0</div></div>
+      <div class="scard sc-bl"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;">CSAT TB</div><div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:5px;" id="s-csat">–</div></div>
+      <div class="scard sc-re"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;">Gọi hôm nay</div><div style="font-size:28px;font-weight:900;color:#ef4444;margin-top:5px;" id="s-today">0</div></div>
+      <div class="scard sc-pu"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;">C06/C12</div><div style="font-size:28px;font-weight:900;color:#8b5cf6;margin-top:5px;" id="s-c0612">0%</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#374151;margin-bottom:12px;">Phân loại Chất liệu</div><div style="position:relative;height:240px;"><canvas id="chartDonut"></canvas></div></div>
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#374151;margin-bottom:12px;">Phễu Chăm Sóc (%)</div><div style="position:relative;height:240px;"><canvas id="chartFunnel"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: ĐÁNH GIÁ HIỆU QUẢ -->
+  <div id="tab-impact" class="tab-section">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="padding:14px 18px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-size:11px;font-weight:800;text-transform:uppercase;color:#374151;">KPI Trước / Sau Sổ HDSD</div>
+        <table style="min-width:unset;">
+          <thead><tr><th>Chỉ số</th><th style="text-align:center;">Trước</th><th style="text-align:center;background:#f0fdf4;color:#16a34a;">Sau</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">Tỷ lệ giới thiệu</td><td style="text-align:center;color:#9ca3af;">4.5%</td><td style="text-align:center;background:#f0fdf4;color:#16a34a;font-weight:700;">8.7% ↑</td></tr>
+            <tr><td style="font-weight:600;">Tỷ lệ mua lại</td><td style="text-align:center;color:#9ca3af;">2.1%</td><td style="text-align:center;background:#f0fdf4;color:#16a34a;font-weight:700;">5.2% ↑</td></tr>
+            <tr><td style="font-weight:600;">CSAT</td><td style="text-align:center;color:#9ca3af;">3.6 ⭐</td><td style="text-align:center;background:#f0fdf4;color:#16a34a;font-weight:700;">4.8 ⭐ ↑</td></tr>
+            <tr><td style="font-weight:600;">Thời gian phản hồi</td><td style="text-align:center;color:#9ca3af;">48 phút</td><td style="text-align:center;background:#f0fdf4;color:#16a34a;font-weight:700;">18 phút ↓</td></tr>
+            <tr><td style="font-weight:600;border-bottom:none;">Giải quyết lần đầu</td><td style="text-align:center;color:#9ca3af;border-bottom:none;">62%</td><td style="text-align:center;background:#f0fdf4;color:#16a34a;font-weight:700;border-bottom:none;">87% ↑</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#374151;margin-bottom:11px;">Referral Growth</div><div style="position:relative;height:165px;"><canvas id="chartBar"></canvas></div></div>
+        <div style="background:#0d0d0d;border-radius:14px;padding:18px;border:1px solid #222;">
+          <div style="font-size:9px;font-weight:800;color:var(--g);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">💡 Phân tích</div>
+          <p style="font-size:12px;color:#d1d5db;line-height:1.75;margin:0;">Referral tăng <b style="color:#fff;">8.7%</b>, CSAT từ <span style="color:#9ca3af;">3.6</span> → <b style="color:var(--g);">4.8 ⭐</b>.</p>
+          <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;"><span class="gold-tag">+93% Referral</span><span class="gold-tag">+148% Mua lại</span><span class="gold-tag">CSAT +1.2</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DEPT FLOAT -->
+<div id="dept-float"></div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="cx" onclick="editFromCtx()">✏️ Sửa thông tin</div>
+  <hr style="border:none;border-top:1px solid #f3f4f6;margin:3px 0;">
+  <div class="cx cx-d" onclick="deleteFromCtx()">🗑️ Xóa khách hàng</div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="mbg" id="del-modal">
+  <div class="mcard" style="width:400px;">
+    <div class="del-hdr"><span style="font-size:20px;">🗑️</span><span style="color:#ef4444;font-size:14px;font-weight:800;margin-left:8px;">Xác nhận xóa khách hàng</span></div>
+    <div class="del-body"><p id="del-name" style="font-size:14px;font-weight:700;color:#111;margin:0 0 7px;"></p><p style="font-size:12px;color:#9ca3af;margin:0;">Hành động này <b>không thể hoàn tác</b>. Dữ liệu sẽ bị xóa khỏi Supabase.</p></div>
+    <div class="del-foot"><button class="btn-no" onclick="closeDel()">Không, giữ lại</button><button class="btn-yes" onclick="confirmDelete()">Có, xóa ngay</button></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="mbg" id="edit-modal">
+  <div class="mcard" style="width:560px;max-width:96vw;">
+    <div class="mh"><h2 id="modal-title">➕ Thêm Khách hàng</h2><button class="mhx" onclick="closeModal()">×</button></div>
+    <div class="mbody">
+      <div><label class="fl">Danh xưng *</label><select id="f-gender" class="fld"><option>Anh</option><option>Chị</option><option>Cô</option><option>Chú</option><option>Bác</option><option>Bạn</option></select></div>
+      <div><label class="fl">Tên khách hàng *</label><input type="text" id="f-name" class="fld" placeholder="VD: Dương"></div>
+      <div><label class="fl">Số điện thoại *</label><input type="text" id="f-phone" class="fld" placeholder="VD: 0944849393" maxlength="11"></div>
+      <div><label class="fl">Tỉnh / Thành phố *</label><input type="text" id="f-address" class="fld" list="province-list" placeholder="Chọn hoặc nhập..."><datalist id="province-list"></datalist></div>
+      <div><label class="fl">Chất liệu *</label>
+        <select id="f-mat" class="fld" onchange="autoWarranty()">
+          <option value="">-- Chọn --</option>
+          <option>Da Laquila</option>
+          <option>Da Rio</option>
+          <option>Da Leone</option>
+          <option>Da bò</option>
+          <option>Vải nỉ</option>
+        </select>
+      </div>
+      <div><label class="fl">Ngày giao *</label><input type="date" id="f-date" class="fld" onchange="autoWarranty()"></div>
+      <div><label class="fl">Ngày gọi lại</label><input type="date" id="f-recall" class="fld"></div>
+      <div><label class="fl">Hạn bảo hành *</label><input type="date" id="f-warranty" class="fld"></div>
+      <div class="full" style="background:#fef9e7;border:1px solid #f5e99a;border-radius:9px;padding:9px 12px;font-size:11px;color:var(--gd);font-weight:600;">ℹ️ C01/C06/C12 mặc định <b>Chưa gọi</b> · CSAT <b>Chưa đánh giá</b> · Bộ phận chỉnh trên bảng. Các trường có <b>*</b> là bắt buộc.</div>
+    </div>
+    <div class="mf"><button class="bc" onclick="closeModal()">Huỷ</button><button class="bs" id="btn-save" onclick="saveCustomer()">✓ Thêm vào CRM</button></div>
+  </div>
+</div>
+
+<!-- ✅ SETUP MODAL - ĐÃ THAY ĐỔI CHO SUPABASE -->
+<div class="mbg" id="setup-modal">
+  <div class="mcard" style="width:580px;max-width:96vw;">
+    <div class="mh"><h2>⚙️ Kết nối Supabase</h2><button class="mhx" onclick="closeSetup()">×</button></div>
+    <div style="padding:20px;">
+      <div class="step-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span class="step-num">1</span><b style="font-size:13px;">Tạo project trên Supabase</b></div><a href="https://supabase.com/dashboard" target="_blank" style="color:#0068ff;font-size:12px;font-weight:600;margin-left:30px;display:block;">↗ Mở Supabase Dashboard</a></div>
+      <div class="step-box"><div style="display:flex;align-items:center;gap:8px;"><span class="step-num">2</span><b style="font-size:13px;">Chạy file SQL trong SQL Editor để tạo bảng</b></div></div>
+      <div class="step-box"><div style="display:flex;align-items:flex-start;gap:8px;"><span class="step-num" style="flex-shrink:0;">3</span><div><b style="font-size:13px;">Lấy thông tin kết nối</b><br><span style="font-size:12px;color:#374151;">Settings → API → Copy <b>Project URL</b> và <b>anon public key</b></span></div></div></div>
+      <div class="step-box" style="border-color:var(--g);background:#fffbeb;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;"><span class="step-num">4</span><b style="font-size:13px;">Nhập thông tin kết nối</b></div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;">Project URL</label>
+          <input type="text" id="sb-url-input" class="fld" placeholder="https://xxxxx.supabase.co" style="margin-top:3px;">
+        </div>
+        <div style="margin-bottom:9px;">
+          <label style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;">Anon Key</label>
+          <input type="text" id="sb-key-input" class="fld" placeholder="eyJhbGciOi..." style="margin-top:3px;">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="testConn()" style="background:#111;color:#fff;border:none;border-radius:8px;padding:8px 15px;font-size:12px;font-weight:700;cursor:pointer;">🔌 Test kết nối</button>
+          <button onclick="saveSetup()" style="background:var(--g);color:#000;border:none;border-radius:8px;padding:8px 15px;font-size:12px;font-weight:800;cursor:pointer;">✓ Lưu & Kết nối</button>
+          <button onclick="disconnectSupabase()" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer;">✕ Ngắt</button>
+        </div>
+        <div id="test-result" class="tr"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// KALIX CRM – SUPABASE VERSION
+// Giữ nguyên 100% giao diện, thay backend Google Sheet → Supabase
+// ══════════════════════════════════════════════════════
+
+// ── ENV ───────────────────────────────────────────
+const LS_URL_KEY = 'kalix-sb-url';
+const LS_KEY_KEY = 'kalix-sb-key';
+let SB_URL = localStorage.getItem(LS_URL_KEY) || '';
+let SB_KEY = localStorage.getItem(LS_KEY_KEY) || '';
+let sb = null; // Supabase client
+let realtimeSub = null; // Realtime subscription
+
+function initSupabase() {
+  if (!SB_URL || !SB_KEY) return false;
+  try {
+    sb = supabase.createClient(SB_URL, SB_KEY);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+// ── CONSTANTS ─────────────────────────────────────
+const PROVINCES=['An Giang','Bà Rịa - Vũng Tàu','Bắc Giang','Bắc Kạn','Bạc Liêu','Bắc Ninh','Bến Tre','Bình Định','Bình Dương','Bình Phước','Bình Thuận','Cà Mau','Cần Thơ','Cao Bằng','Đà Nẵng','Đắk Lắk','Đắk Nông','Điện Biên','Đồng Nai','Đồng Tháp','Gia Lai','Hà Giang','Hà Nam','Hà Nội','Hà Tĩnh','Hải Dương','Hải Phòng','Hậu Giang','Hòa Bình','Hưng Yên','Khánh Hòa','Kiên Giang','Kon Tum','Lai Châu','Lâm Đồng','Lạng Sơn','Lào Cai','Long An','Nam Định','Nghệ An','Ninh Bình','Ninh Thuận','Phú Thọ','Phú Yên','Quảng Bình','Quảng Nam','Quảng Ngãi','Quảng Ninh','Quảng Trị','Sóc Trăng','Sơn La','Tây Ninh','Thái Bình','Thái Nguyên','Thanh Hóa','Thừa Thiên Huế','Tiền Giang','TP. Hồ Chí Minh','Trà Vinh','Tuyên Quang','Vĩnh Long','Vĩnh Phúc','Yên Bái'];
+const MATS  = ['Da Laquila','Da Rio','Da Leone','Da bò','Vải nỉ'];
+const WARRANTY_MONTHS = {'Da Laquila':12,'Da Rio':18,'Da Leone':24,'Da bò':24,'Vải nỉ':12};
+const DEPTS =['Sales','PO','QC','Giao hàng','MKT','3D'];
+const SL    ={done:'✔ Đã xong',none:'— Chưa gọi',pending:'⏳ Đang chờ',overdue:'✖ Quá hạn'};
+const TODAY = new Date().toISOString().split('T')[0];
+
+document.getElementById('province-list').innerHTML=PROVINCES.map(p=>`<option value="${p}">`).join('');
+
+// ── STATE ─────────────────────────────────────────
+let rows=[],ctxRowId=null,delRowId=null,editingId=null;
+let chartD=null,chartF=null,chartB=null;
+let saveTimer=null;
+
+// ── DATE: any format → dd/mm/yyyy display ──────
+function fD(val){
+  if(!val||val===''||val==='undefined'||val==='null') return '–';
+  const s=String(val).trim();
+  if(!s||s==='undefined') return '–';
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){const p=s.split('T')[0].split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+  try{const d=new Date(s);if(!isNaN(d.getTime()))return('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}catch(e){}
+  return s;
+}
+
+function fPhone(val){
+  const s=String(val||'').trim();
+  if(!s) return '';
+  if(/^\d{9}$/.test(s)) return '0'+s;
+  return s;
+}
+
+function sid(id){return String(id||'');}
+
+function isUserTyping(){
+  const ae=document.activeElement;
+  if(!ae) return false;
+  if(ae.tagName==='TEXTAREA') return true;
+  if(ae.tagName==='INPUT'&&ae.type==='text'&&ae.closest('#tbody')) return true;
+  return false;
+}
+
+// ── SYNC BADGE ──────────────────────────────────
+function setSyncBadge(state,txt){
+  document.getElementById('sync-badge').className='sbadge sb-'+state;
+  document.getElementById('sync-lbl').textContent=txt;
+}
+function onBadgeClick(){ openSetup(); }
+
+// ══════════════════════════════════════════════════
+// ✅ SUPABASE API (thay thế callSheets)
+// ══════════════════════════════════════════════════
+
+function normalizeRow(r) {
+  return Object.assign({}, r, {
+    id: sid(r.id),
+    phone: fPhone(r.phone),
+    csat: (r.csat===''||r.csat===null||r.csat===undefined)?'':Number(r.csat),
+    dept: Array.isArray(r.dept) ? r.dept : (r.dept ? JSON.parse(r.dept) : [])
+  });
+}
+
+async function loadData(){
+  if(!sb) { setSyncBadge('off','Chưa kết nối'); return; }
+  setSyncBadge('ing','Đang tải...');
+  try {
+    const { data, error } = await sb.from('customers').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    rows = (data || []).map(normalizeRow);
+    renderTable(); updateStats();
+    setSyncBadge('ok','⚡ Supabase Realtime');
+  } catch(e) {
+    setSyncBadge('err', 'Lỗi: ' + (e.message || 'Không kết nối được'));
+  }
+}
+
+// ✅ REALTIME: Thay polling 30s bằng Supabase Realtime (cập nhật tức thì)
+function subscribeRealtime() {
+  if (!sb || realtimeSub) return;
+  realtimeSub = sb.channel('customers-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
+      if (isUserTyping()) return; // Không refresh khi đang gõ
+
+      if (payload.eventType === 'INSERT') {
+        const newRow = normalizeRow(payload.new);
+        // Chỉ thêm nếu chưa có (tránh duplicate khi chính mình thêm)
+        if (!rows.find(r => r.id === newRow.id)) {
+          rows.unshift(newRow);
+          renderTable(); updateStats();
+          setSyncBadge('ok','✨ Vừa cập nhật');
+          setTimeout(()=>setSyncBadge('ok','⚡ Supabase Realtime'),2500);
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        const updated = normalizeRow(payload.new);
+        const idx = rows.findIndex(r => r.id === updated.id);
+        if (idx >= 0) {
+          rows[idx] = updated;
+          renderTable(); updateStats();
+          setSyncBadge('ok','✨ Vừa cập nhật');
+          setTimeout(()=>setSyncBadge('ok','⚡ Supabase Realtime'),2500);
+        }
+      } else if (payload.eventType === 'DELETE') {
+        const delId = sid(payload.old.id);
+        rows = rows.filter(r => r.id !== delId);
+        renderTable(); updateStats();
+        setSyncBadge('ok','✨ Đã đồng bộ xóa');
+        setTimeout(()=>setSyncBadge('ok','⚡ Supabase Realtime'),2500);
+      }
+    })
+    .subscribe();
+}
+
+// ✅ Upsert (thêm hoặc cập nhật)
+async function doUpsert(row) {
+  if (!sb) return;
+  setSyncBadge('ing','Đang lưu...');
+  try {
+    // Chuẩn bị data cho Supabase
+    const payload = {
+      id: row.id,
+      gender: row.gender,
+      name: row.name,
+      phone: row.phone,
+      address: row.address,
+      mat: row.mat,
+      date: row.date || null,
+      recall: row.recall || null,
+      warranty: row.warranty || null,
+      c01: row.c01 || 'none',
+      c06: row.c06 || 'none',
+      c12: row.c12 || 'none',
+      csat: row.csat === '' ? '' : String(row.csat),
+      dept: Array.isArray(row.dept) ? row.dept : [],
+      note: row.note || ''
+    };
+
+    const { error } = await sb.from('customers').upsert(payload, { onConflict: 'id' });
+    if (error) throw error;
+    setSyncBadge('ok','Đã lưu ✓');
+    setTimeout(()=>setSyncBadge('ok','⚡ Supabase Realtime'),1500);
+  } catch(e) {
+    setSyncBadge('err','Lỗi lưu: ' + (e.message||''));
+  }
+}
+
+function scheduleUpsert(row){
+  clearTimeout(saveTimer);
+  const delay = isUserTyping() ? 3000 : 900;
+  saveTimer = setTimeout(()=>{
+    if(isUserTyping()){ scheduleUpsert(row); return; }
+    doUpsert(row);
+  }, delay);
+}
+
+// ✅ Delete
+async function doDeleteApi(id){
+  if (!sb) return;
+  setSyncBadge('ing','Đang xóa...');
+  try {
+    const { error } = await sb.from('customers').delete().eq('id', sid(id));
+    if (error) throw error;
+    setSyncBadge('ok','Đã xóa ✓');
+    setTimeout(()=>setSyncBadge('ok','⚡ Supabase Realtime'),1500);
+  } catch(e) {
+    setSyncBadge('err','Lỗi xóa');
+  }
+}
+
+// ── TABLE COMPONENTS ─────────────────────────────
+function sdSel(s,f,id){
+  return '<select class="sd sd-'+s+'" onchange="upd(\''+id+'\',\''+f+'\',this.value);this.className=\'sd sd-\'+this.value">'
+    +Object.entries(SL).map(([v,l])=>`<option value="${v}"${v===s?' selected':''}>${l}</option>`).join('')
+    +'</select>';
+}
+function matSel(s,id){
+  return '<select class="mat-dd" onchange="upd(\''+id+'\',\'mat\',this.value)">'
+    +MATS.map(m=>`<option${m===s?' selected':''}>${m}</option>`).join('')+'</select>';
+}
+
+function csatSel(s,id){
+  const hasRating=(s!==''&&s!==null&&s!==undefined&&!isNaN(Number(s)));
+  const cls=hasRating?'csat-dd':'csat-dd no-rating';
+  return `<select class="${cls}" onchange="updCsat('${id}',this)">
+    <option value=""${!hasRating?' selected':''}>– ⭐</option>
+    ${[5,4,3,2,1].map(v=>`<option value="${v}"${Number(s)===v?' selected':''}>${v} ⭐</option>`).join('')}
+  </select>`;
+}
+
+function deptHTML(depts,id){
+  const arr=Array.isArray(depts)?depts:[];
+  const inner=arr.length?arr.map(d=>`<span class="dept-tag">${d}</span>`).join(''):'<span class="dept-empty">Chọn...</span>';
+  return `<div class="dept-trigger" onclick="openDeptFloat(event,'${id}')" id="dt-${id}">${inner}</div>`;
+}
+
+// ── RENDER ────────────────────────────────────────
+function renderTable(data){
+  data=data||rows;
+  document.getElementById('tbody').innerHTML=data.map((r,i)=>{
+    const id=sid(r.id);
+    return `<tr oncontextmenu="showCtx(event,'${id}')" style="cursor:default;">
+      <td style="text-align:center;color:#9ca3af;font-size:10.5px;font-family:monospace;">${i+1}</td>
+      <td style="font-weight:700;white-space:nowrap;font-size:12px;">${r.gender} ${r.name} – ${r.address}</td>
+      <td style="font-family:monospace;font-size:11px;color:#6b7280;">${r.phone}</td>
+      <td style="text-align:center;"><a class="zalo" href="https://zalo.me/${r.phone}" target="_blank">Zalo</a></td>
+      <td>${matSel(r.mat,id)}</td>
+      <td><input class="ii" value="${fD(r.date)}" onchange="upd('${id}','date',this.value)" style="width:90px;"></td>
+      <td><input class="ii" value="${fD(r.recall)}" onchange="upd('${id}','recall',this.value)" style="width:90px;color:#2563eb;font-weight:600;"></td>
+      <td><input class="ii" value="${fD(r.warranty)}" onchange="upd('${id}','warranty',this.value)" style="width:90px;"></td>
+      <td>${sdSel(r.c01,'c01',id)}</td>
+      <td>${sdSel(r.c06,'c06',id)}</td>
+      <td>${sdSel(r.c12,'c12',id)}</td>
+      <td style="text-align:center;">${csatSel(r.csat,id)}</td>
+      <td>${deptHTML(r.dept,id)}</td>
+      <td><textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:185px;">${r.note||''}</textarea></td>
+      <td><button onclick="showCtx(event,'${id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;padding:1px 3px;">⋮</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('cust-count').textContent=rows.length;
+}
+
+function upd(id,f,v){
+  id=sid(id);
+  const r=rows.find(x=>sid(x.id)===id); if(!r) return;
+  r[f]=(f==='csat')?+v:v; updateStats(); scheduleUpsert(r);
+}
+function updCsat(id,sel){
+  id=sid(id);
+  const r=rows.find(x=>sid(x.id)===id); if(!r) return;
+  r.csat=sel.value===''?'':Number(sel.value);
+  sel.className=sel.value===''?'csat-dd no-rating':'csat-dd';
+  updateStats(); scheduleUpsert(r);
+}
+function updNote(id,value){
+  id=sid(id);
+  const r=rows.find(x=>sid(x.id)===id); if(!r) return;
+  if(r.note===value) return;
+  r.note=value; scheduleUpsert(r);
+}
+
+// ── DEPT MULTI ────────────────────────────────────
+function openDeptFloat(e,id){
+  e.stopPropagation(); id=sid(id);
+  const r=rows.find(x=>sid(x.id)===id); if(!r) return;
+  const arr=Array.isArray(r.dept)?r.dept:[];
+  const el=document.getElementById('dept-float');
+  el.innerHTML=DEPTS.map(d=>`<label class="dept-opt"><input type="checkbox" value="${d}" ${arr.includes(d)?'checked':''} onchange="toggleDept('${id}','${d}',this.checked)">${d}</label>`).join('');
+  const rect=e.currentTarget.getBoundingClientRect();
+  el.style.display='block';
+  el.style.top=Math.min(rect.bottom+4,window.innerHeight-200)+'px';
+  el.style.left=Math.min(rect.left,window.innerWidth-165)+'px';
+}
+function closeDeptFloat(e){
+  const fl=document.getElementById('dept-float');
+  if(fl&&!fl.contains(e.target)&&!e.target.closest('.dept-trigger')) fl.style.display='none';
+}
+function toggleDept(id,dept,checked){
+  id=sid(id);
+  const r=rows.find(x=>sid(x.id)===id); if(!r) return;
+  let arr=Array.isArray(r.dept)?[...r.dept]:[];
+  arr=checked?[...new Set([...arr,dept])]:arr.filter(x=>x!==dept);
+  r.dept=arr;
+  const el=document.getElementById('dt-'+id);
+  if(el) el.innerHTML=arr.length?arr.map(d=>`<span class="dept-tag">${d}</span>`).join(''):'<span class="dept-empty">Chọn...</span>';
+  scheduleUpsert(r);
+}
+
+// ── STATS ─────────────────────────────────────────
+function updateStats(){
+  const n=rows.length;
+  const d1=rows.filter(r=>r.c01==='done').length;
+  const d6=rows.filter(r=>r.c06==='done').length;
+  const d12=rows.filter(r=>r.c12==='done').length;
+  const rated=rows.filter(r=>r.csat!==''&&r.csat!==null&&!isNaN(Number(r.csat)));
+  const avg=rated.length?(rated.reduce((a,r)=>a+Number(r.csat),0)/rated.length).toFixed(1):'–';
+  document.getElementById('s-total').textContent=n;
+  document.getElementById('s-c01').textContent=n?Math.round(d1/n*100)+'%':'0%';
+  document.getElementById('s-c01s').textContent=d1+'/'+n;
+  document.getElementById('s-csat').textContent=avg==='–'?'–':avg+' ⭐';
+  document.getElementById('s-today').textContent=rows.filter(r=>r.recall===TODAY).length;
+  document.getElementById('s-c0612').textContent=n?Math.round(((d6+d12)/(n*2))*100)+'%':'0%';
+  if(document.getElementById('tab-dashboard').classList.contains('active')) renderDashCharts();
+}
+
+// ── CHARTS ────────────────────────────────────────
+function renderDashCharts(){
+  const mc=MATS.map(m=>rows.filter(r=>r.mat===m).length);
+  if(chartD) chartD.destroy();
+  chartD=new Chart(document.getElementById('chartDonut'),{type:'doughnut',data:{labels:MATS,datasets:[{data:mc,backgroundColor:['#D4AF37','#3b82f6','#ef4444','#22c55e','#8b5cf6'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:10}}}}});
+  const n=rows.length||1;
+  if(chartF) chartF.destroy();
+  chartF=new Chart(document.getElementById('chartFunnel'),{type:'bar',data:{labels:['C01','C06','C12'],datasets:[{data:[Math.round(rows.filter(r=>r.c01==='done').length/n*100),Math.round(rows.filter(r=>r.c06==='done').length/n*100),Math.round(rows.filter(r=>r.c12==='done').length/n*100)],backgroundColor:['#D4AF37','#3b82f6','#22c55e'],borderRadius:8,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#f3f4f6'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+function renderImpactChart(){
+  if(chartB) chartB.destroy();
+  chartB=new Chart(document.getElementById('chartBar'),{type:'bar',data:{labels:['Q1','Q2','Q3','Q4'],datasets:[{label:'Trước',data:[4.5,4.5,4.8,4.5],backgroundColor:'#e5e7eb',borderRadius:6,borderSkipped:false},{label:'Sau',data:[null,null,6.2,8.7],backgroundColor:'#22c55e',borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10,padding:12}}},scales:{y:{beginAtZero:true,max:12,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#f3f4f6'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+
+// ── FILTER ────────────────────────────────────────
+function applyFilter(){
+  const q=document.getElementById('search-box').value.toLowerCase();
+  const fT=document.getElementById('filter-type').value;
+  const fD2=document.getElementById('filter-date').value;
+  let data=rows.filter(r=>(r.name+r.address+r.phone+r.mat).toLowerCase().includes(q));
+  let desc='';
+  if(fT!=='none'&&fD2){
+    data=data.filter(r=>r[fT]===fD2);
+    document.getElementById('fbar').classList.add('fbar-on');
+    const lbl={date:'Ngày giao',recall:'Ngày gọi lại',warranty:'Hạn bảo hành'};
+    desc='🔍 '+lbl[fT]+' = '+fD2.split('-').reverse().join('/')+' · '+data.length+' kết quả';
+  } else document.getElementById('fbar').classList.remove('fbar-on');
+  const n=document.getElementById('filter-notice');
+  n.style.display=desc?'block':'none'; n.textContent=desc;
+  renderTable(data);
+}
+function clearFilter(){
+  document.getElementById('filter-type').value='none';
+  document.getElementById('filter-date').value='';
+  document.getElementById('fbar').classList.remove('fbar-on');
+  document.getElementById('filter-notice').style.display='none';
+  applyFilter();
+}
+
+// ── CONTEXT MENU ──────────────────────────────────
+function showCtx(e,id){
+  e.preventDefault();e.stopPropagation();ctxRowId=sid(id);
+  const m=document.getElementById('ctx-menu');
+  m.style.display='block';
+  m.style.left=Math.min(e.clientX,window.innerWidth-175)+'px';
+  m.style.top=Math.min(e.clientY,window.innerHeight-95)+'px';
+}
+function hideCtx(){document.getElementById('ctx-menu').style.display='none';}
+
+function editFromCtx(){
+  const r=rows.find(x=>sid(x.id)===ctxRowId); if(!r){hideCtx();return;}
+  editingId=ctxRowId;
+  document.getElementById('modal-title').textContent='✏️ Sửa: '+r.gender+' '+r.name+' – '+r.address;
+  document.getElementById('btn-save').textContent='✓ Lưu thay đổi';
+  document.getElementById('f-gender').value=r.gender;
+  document.getElementById('f-name').value=r.name;
+  document.getElementById('f-phone').value=r.phone;
+  document.getElementById('f-address').value=r.address;
+  document.getElementById('f-mat').value=r.mat;
+  document.getElementById('f-date').value=r.date||'';
+  document.getElementById('f-recall').value=r.recall||'';
+  document.getElementById('f-warranty').value=r.warranty||'';
+  document.getElementById('edit-modal').classList.add('open'); hideCtx();
+}
+
+// ── DELETE ────────────────────────────────────────
+function deleteFromCtx(){
+  const r=rows.find(x=>sid(x.id)===ctxRowId); if(!r){hideCtx();return;}
+  delRowId=ctxRowId;
+  document.getElementById('del-name').textContent=r.gender+' '+r.name+' – '+r.address;
+  document.getElementById('del-modal').classList.add('open'); hideCtx();
+}
+function closeDel(){document.getElementById('del-modal').classList.remove('open');delRowId=null;}
+async function confirmDelete(){
+  if(!delRowId) return;
+  const id=delRowId; closeDel();
+  rows=rows.filter(x=>sid(x.id)!==id);
+  renderTable(); updateStats();
+  await doDeleteApi(id);
+}
+
+// ── ADD / EDIT MODAL ─────────────────────────────
+function autoWarranty(){
+  const dateStr = document.getElementById('f-date').value;
+  const mat     = document.getElementById('f-mat').value;
+  const wEl     = document.getElementById('f-warranty');
+  if(!dateStr || !mat || !WARRANTY_MONTHS[mat]){ return; }
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return;
+  d.setMonth(d.getMonth() + WARRANTY_MONTHS[mat]);
+  wEl.value = d.toISOString().split('T')[0];
+}
+
+function openModal(id){
+  editingId=id;
+  if(!id){
+    document.getElementById('modal-title').textContent='➕ Thêm Khách hàng mới';
+    document.getElementById('btn-save').textContent='✓ Thêm vào CRM';
+    ['f-name','f-phone','f-address'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('f-gender').value='Anh';
+    document.getElementById('f-mat').value='';
+    document.getElementById('f-date').value=TODAY;
+    document.getElementById('f-recall').value='';
+    document.getElementById('f-warranty').value='';
+  }
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('edit-modal').classList.remove('open');editingId=null;}
+document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+function saveCustomer(){
+  const gender=document.getElementById('f-gender').value, name=document.getElementById('f-name').value.trim(),
+        phone=document.getElementById('f-phone').value.trim(), address=document.getElementById('f-address').value.trim(),
+        mat=document.getElementById('f-mat').value, date=document.getElementById('f-date').value,
+        recall=document.getElementById('f-recall').value, warranty=document.getElementById('f-warranty').value;
+  const errs=[];
+  if(!name) errs.push('Tên khách hàng');
+  if(!/^0\d{8,9}$/.test(phone)) errs.push('Số điện thoại (bắt đầu 0, 9–10 số)');
+  if(!address) errs.push('Tỉnh / Thành phố');
+  if(!mat) errs.push('Chất liệu');
+  if(!date) errs.push('Ngày giao');
+  if(!warranty) errs.push('Hạn bảo hành');
+  if(errs.length){alert('⚠️ Vui lòng điền:\n• '+errs.join('\n• '));return;}
+  let newRow;
+  if(editingId){
+    const idx=rows.findIndex(r=>sid(r.id)===sid(editingId));
+    rows[idx]=Object.assign({},rows[idx],{gender,name,address,phone,mat,date,recall,warranty});
+    newRow=rows[idx];
+  } else {
+    newRow={id:sid(Date.now()),gender,name,address,phone,mat,date,recall,warranty,c01:'none',c06:'none',c12:'none',csat:'',dept:[],note:''};
+    rows.unshift(newRow);
+  }
+  renderTable(); updateStats(); closeModal(); scheduleUpsert(newRow);
+  if(!editingId){const tb=document.getElementById('tbody');if(tb.firstElementChild){tb.firstElementChild.style.background='#fffbeb';setTimeout(()=>{if(tb.firstElementChild)tb.firstElementChild.style.background='';},1800);}}
+}
+
+// ══════════════════════════════════════════════════
+// ✅ SETUP MODAL – SUPABASE
+// ══════════════════════════════════════════════════
+function openSetup(){
+  document.getElementById('sb-url-input').value=SB_URL;
+  document.getElementById('sb-key-input').value=SB_KEY;
+  document.getElementById('test-result').style.display='none';
+  document.getElementById('setup-modal').classList.add('open');
+}
+function closeSetup(){document.getElementById('setup-modal').classList.remove('open');}
+
+async function testConn(){
+  const url=document.getElementById('sb-url-input').value.trim();
+  const key=document.getElementById('sb-key-input').value.trim();
+  const el=document.getElementById('test-result');
+  el.style.display='block';el.className='tr';el.textContent='⏳ Đang kiểm tra...';
+  try {
+    const testSb = supabase.createClient(url, key);
+    const { data, error, count } = await testSb.from('customers').select('*', { count: 'exact', head: true });
+    if (error) throw error;
+    el.className='tr tr-ok';
+    el.textContent='✅ Kết nối OK! Bảng customers tìm thấy · ' + (count||0) + ' dòng dữ liệu';
+  } catch(e) {
+    el.className='tr tr-err';
+    el.textContent='❌ Lỗi: ' + (e.message || 'Không thể kết nối. Kiểm tra lại URL và Key.');
+  }
+}
+
+function saveSetup(){
+  const url=document.getElementById('sb-url-input').value.trim();
+  const key=document.getElementById('sb-key-input').value.trim();
+  if(!url||!key){alert('Vui lòng nhập cả URL và Key');return;}
+  SB_URL=url; SB_KEY=key;
+  localStorage.setItem(LS_URL_KEY, url);
+  localStorage.setItem(LS_KEY_KEY, key);
+  initSupabase();
+  closeSetup();
+  loadData();
+  subscribeRealtime();
+}
+
+function disconnectSupabase(){
+  SB_URL=''; SB_KEY='';
+  localStorage.removeItem(LS_URL_KEY);
+  localStorage.removeItem(LS_KEY_KEY);
+  if(realtimeSub){ realtimeSub.unsubscribe(); realtimeSub=null; }
+  sb=null; rows=[];
+  renderTable(); updateStats();
+  setSyncBadge('off','Chưa kết nối');
+  closeSetup();
+}
+
+// ── NAV ───────────────────────────────────────────
+const TITLES={master:'Master Data',dashboard:'Tổng quan Thống kê',impact:'Đánh giá Hiệu quả'};
+function showTab(t){
+  ['master','dashboard','impact'].forEach(x=>{document.getElementById('tab-'+x).classList.remove('active');document.getElementById('nav-'+x).classList.remove('active');});
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('nav-'+t).classList.add('active');
+  document.getElementById('topbar-title').textContent=TITLES[t];
+  if(t==='dashboard') setTimeout(()=>{updateStats();renderDashCharts();},60);
+  if(t==='impact') setTimeout(renderImpactChart,60);
+}
+
+// ══════════════════════════════════════════════════
+// ✅ BOOT – Khởi động
+// ══════════════════════════════════════════════════
+if (SB_URL && SB_KEY) {
+  if (initSupabase()) {
+    loadData();
+    subscribeRealtime();
+  }
+} else {
+  setSyncBadge('off','Chưa kết nối');
+  setTimeout(openSetup, 600);
+}
+</script>
+</body>
+</html>
