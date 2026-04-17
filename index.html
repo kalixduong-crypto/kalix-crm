@@ -43,12 +43,16 @@ nav a.active svg{opacity:1;}
 .sl-logout{display:block;width:100%;background:#1a1a1a;color:#9ca3af;border:1px solid #333;border-radius:7px;padding:6px;font-size:10px;font-weight:700;cursor:pointer;text-align:center;}
 .sl-logout:hover{color:#ef4444;border-color:#ef4444;}
 
-/* Hamburger mobile */
-#hamburger{display:none;position:fixed;top:10px;left:10px;z-index:200;background:#0d0d0d;border:1px solid #333;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--g);font-size:18px;}
+/* Hamburger / Toggle */
+#hamburger{position:fixed;top:10px;left:10px;z-index:200;background:#0d0d0d;border:1px solid #333;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--g);font-size:18px;display:block;transition:left .3s;}
+#sidebar.collapsed{transform:translateX(-100%);}
+#sidebar.collapsed~#hamburger{left:10px;}
+#sidebar:not(.collapsed)~#hamburger{left:calc(var(--sw) + 6px);}
+body.sb-collapsed #main{margin-left:0;}
 @media(max-width:900px){
   #sidebar{transform:translateX(-100%);}
   #sidebar.open{transform:translateX(0);}
-  #hamburger{display:block;}
+  #sidebar.open~#hamburger{left:calc(var(--sw) + 6px);}
   #main{margin-left:0!important;}
 }
 
@@ -229,7 +233,7 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
 </div>
 
 <!-- HAMBURGER -->
-<div id="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</div>
+<div id="hamburger" onclick="toggleSB()">☰</div>
 
 <!-- SIDEBAR -->
 <div id="sidebar">
@@ -410,7 +414,12 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
         <label class="fl">Sản phẩm *</label>
         <div class="prod-list" id="f-prod-list"></div>
         <div class="prod-add-row">
-          <div style="flex:2;"><input type="text" id="f-prod-name" class="fld" placeholder="Tên SP (VD: Sofa góc L)" style="padding:6px 8px;font-size:12px;"></div>
+          <div style="flex:2;">
+            <select id="f-prod-name" class="fld" style="padding:6px 8px;font-size:12px;">
+              <option value="">Chọn sản phẩm</option>
+              <option>Sofa</option><option>Bàn trà</option><option>Bàn ghế ăn</option>
+            </select>
+          </div>
           <div style="flex:1;">
             <select id="f-prod-mat" class="fld" style="padding:6px 8px;font-size:12px;">
               <option value="">Chất liệu</option>
@@ -483,6 +492,11 @@ function toISO(v){if(!v||v==='–')return'';if(/^\d{4}-\d{2}-\d{2}/.test(v))retu
 function fPhone(v){const s=String(v||'').trim();return/^\d{9}$/.test(s)?'0'+s:s;}
 function sid(id){return String(id||'');}
 function isUserTyping(){const a=document.activeElement;return a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.closest('#tbody')));}
+function toggleSB(){
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=900){sb.classList.toggle('open');sb.classList.remove('collapsed');}
+  else{sb.classList.toggle('collapsed');document.body.classList.toggle('sb-collapsed');}
+}
 
 // ── AUTH ─────────────────────────────────────────
 async function checkAuth(){
@@ -526,9 +540,10 @@ function setSyncBadge(s,t){document.getElementById('sync-badge').className='sbad
 function normalizeRow(r){
   const prods=Array.isArray(r.products)?r.products:(r.products?JSON.parse(r.products):[]);
   // Compat: nếu chưa có products, tạo từ mat/warranty cũ
-  if(prods.length===0&&r.mat){prods.push({name:r.mat,mat:r.mat,warranty:r.warranty||''});}
+  if(prods.length===0&&r.mat){prods.push({name:'Sofa',mat:r.mat,warranty:r.warranty||''});}
   return Object.assign({},r,{
     id:sid(r.id),phone:fPhone(r.phone),
+    date:toISO(r.date),recall:toISO(r.recall),
     csat:(r.csat===''||r.csat==null)?'':Number(r.csat),
     dept:Array.isArray(r.dept)?r.dept:(r.dept?JSON.parse(r.dept):[]),
     products:prods,
@@ -927,10 +942,10 @@ function renderModalProducts(){
   </div>`).join('');
 }
 function addProductToModal(){
-  const name=document.getElementById('f-prod-name').value.trim();
+  const name=document.getElementById('f-prod-name').value;
   const mat=document.getElementById('f-prod-mat').value;
   const dateStr=document.getElementById('f-date').value;
-  if(!name){alert('Nhập tên sản phẩm');return;}
+  if(!name){alert('Chọn sản phẩm');return;}
   if(!mat){alert('Chọn chất liệu');return;}
   const warranty=calcWarranty(dateStr,mat);
   modalProducts.push({name,mat,warranty});
