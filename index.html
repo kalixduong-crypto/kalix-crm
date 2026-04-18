@@ -43,16 +43,18 @@ nav a.active svg{opacity:1;}
 .sl-logout{display:block;width:100%;background:#1a1a1a;color:#9ca3af;border:1px solid #333;border-radius:7px;padding:6px;font-size:10px;font-weight:700;cursor:pointer;text-align:center;}
 .sl-logout:hover{color:#ef4444;border-color:#ef4444;}
 
-/* Hamburger / Toggle */
-#hamburger{position:fixed;top:10px;left:10px;z-index:200;background:#0d0d0d;border:1px solid #333;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--g);font-size:18px;display:block;transition:left .3s;}
+/* Sidebar Toggle Tab - thanh mỏng giữa trái */
+#sb-tab{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:200;width:14px;height:60px;background:#0d0d0d;border-radius:0 8px 8px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:left .3s,opacity .3s;opacity:.35;border:1px solid #333;border-left:none;}
+#sb-tab:hover{opacity:1;width:18px;}
+#sb-tab .tab-arrow{color:var(--g);font-size:10px;font-weight:900;line-height:1;}
+#sidebar:not(.collapsed)~#sb-tab{left:var(--sw);}
+#sidebar.collapsed~#sb-tab{left:0;}
 #sidebar.collapsed{transform:translateX(-100%);}
-#sidebar.collapsed~#hamburger{left:10px;}
-#sidebar:not(.collapsed)~#hamburger{left:calc(var(--sw) + 6px);}
 body.sb-collapsed #main{margin-left:0;}
 @media(max-width:900px){
   #sidebar{transform:translateX(-100%);}
   #sidebar.open{transform:translateX(0);}
-  #sidebar.open~#hamburger{left:calc(var(--sw) + 6px);}
+  #sidebar.open~#sb-tab{left:var(--sw);}
   #main{margin-left:0!important;}
 }
 
@@ -228,12 +230,13 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
     <input type="email" id="auth-email" class="auth-input" placeholder="Email nhân viên">
     <input type="password" id="auth-pass" class="auth-input" placeholder="Mật khẩu" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="auth-btn" id="auth-btn" onclick="doLogin()">Đăng nhập</button>
+    <div style="text-align:center;margin-top:14px;"><button onclick="enterGuest()" style="background:none;border:none;color:#555;font-size:11px;cursor:pointer;text-decoration:underline;">Xem với tư cách khách</button></div>
     <div class="auth-err" id="auth-err"></div>
   </div>
 </div>
 
-<!-- HAMBURGER -->
-<div id="hamburger" onclick="toggleSB()">☰</div>
+<!-- SIDEBAR TAB - thanh mỏng giữa trái -->
+<div id="sb-tab" onclick="toggleSB()"><span class="tab-arrow">›</span></div>
 
 <!-- SIDEBAR -->
 <div id="sidebar">
@@ -264,11 +267,13 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
 <!-- MAIN -->
 <div id="main">
   <!-- BANNER NHẮC NHỞ -->
-  <div class="alert-banner ab-danger" id="banner-overdue" onclick="showTab('master');filterOverdue()">
-    <span>🔴</span><span id="banner-overdue-txt">0 khách hàng quá hạn cần xử lý!</span><span style="margin-left:auto;font-size:10px;opacity:.7;">Nhấn để xem →</span>
+  <div class="alert-banner ab-danger" id="banner-overdue">
+    <span onclick="showTab('master');filterOverdue()" style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">🔴 <span id="banner-overdue-txt">0 khách hàng quá hạn cần xử lý!</span><span style="font-size:10px;opacity:.7;">Nhấn để xem →</span></span>
+    <span onclick="event.stopPropagation();this.parentElement.classList.remove('show')" style="cursor:pointer;font-size:16px;opacity:.5;padding:0 4px;margin-left:8px;" title="Tắt">✕</span>
   </div>
-  <div class="alert-banner ab-warn" id="banner-today" onclick="showTab('master');filterToday()">
-    <span>📞</span><span id="banner-today-txt">0 khách cần gọi hôm nay</span><span style="margin-left:auto;font-size:10px;opacity:.7;">Nhấn để xem →</span>
+  <div class="alert-banner ab-warn" id="banner-today">
+    <span onclick="showTab('master');filterToday()" style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;">📞 <span id="banner-today-txt">0 khách cần gọi hôm nay</span><span style="font-size:10px;opacity:.7;">Nhấn để xem →</span></span>
+    <span onclick="event.stopPropagation();this.parentElement.classList.remove('show')" style="cursor:pointer;font-size:16px;opacity:.5;padding:0 4px;margin-left:8px;" title="Tắt">✕</span>
   </div>
 
   <div class="topbar">
@@ -283,7 +288,7 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
         </div>
         <input type="text" id="search-box" class="search-i" oninput="applyFilter()" placeholder="🔍 Tìm tên, SĐT, tỉnh...">
         <button class="csv-btn" onclick="exportCSV()">📥 CSV</button>
-        <button class="add-btn" onclick="openModal(null)">+ Thêm KH</button>
+        <button class="add-btn" id="btn-add-cust" onclick="openModal(null)">+ Thêm KH</button>
       </div>
     </div>
     <div class="topbar-row2" id="topbar-filter">
@@ -481,7 +486,7 @@ const PAGE_SIZE=50;
 document.getElementById('province-list').innerHTML=PROVINCES.map(p=>`<option value="${p}">`).join('');
 
 // ── STATE ────────────────────────────────────────
-let rows=[],ctxRowId=null,delRowId=null,editingId=null;
+let rows=[],ctxRowId=null,delRowId=null,editingId=null,isGuest=false;
 let chartD=null,chartF=null,chartM=null,chartC=null;
 let saveTimer=null,currentPage=1,sortCol=null,sortDir=1;
 let modalProducts=[];
@@ -493,9 +498,14 @@ function fPhone(v){const s=String(v||'').trim();return/^\d{9}$/.test(s)?'0'+s:s;
 function sid(id){return String(id||'');}
 function isUserTyping(){const a=document.activeElement;return a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.closest('#tbody')));}
 function toggleSB(){
-  const sb=document.getElementById('sidebar');
-  if(window.innerWidth<=900){sb.classList.toggle('open');sb.classList.remove('collapsed');}
-  else{sb.classList.toggle('collapsed');document.body.classList.toggle('sb-collapsed');}
+  const sb=document.getElementById('sidebar'),arrow=document.querySelector('#sb-tab .tab-arrow');
+  if(window.innerWidth<=900){
+    sb.classList.toggle('open');sb.classList.remove('collapsed');
+    arrow.textContent=sb.classList.contains('open')?'‹':'›';
+  }else{
+    sb.classList.toggle('collapsed');document.body.classList.toggle('sb-collapsed');
+    arrow.textContent=sb.classList.contains('collapsed')?'›':'‹';
+  }
 }
 
 // ── AUTH ─────────────────────────────────────────
@@ -526,11 +536,37 @@ async function doLogout(){
 }
 function showApp(){
   document.getElementById('auth-screen').classList.add('hidden');
-  const em=currentUser.email||'';
-  const initials=em.split('@')[0].substring(0,2).toUpperCase();
-  document.getElementById('sl-ava').textContent=initials;
-  document.getElementById('sl-name').textContent=em.split('@')[0];
-  loadData();subscribeRealtime();
+  if(isGuest){
+    document.getElementById('sl-ava').textContent='👁';
+    document.getElementById('sl-name').textContent='Khách';
+    document.getElementById('sl-role').textContent='Chỉ xem';
+    document.querySelector('.sl-logout').textContent='Đăng nhập';
+    document.querySelector('.sl-logout').onclick=()=>{isGuest=false;document.getElementById('auth-screen').classList.remove('hidden');};
+  }else{
+    const em=currentUser.email||'';
+    const initials=em.split('@')[0].substring(0,2).toUpperCase();
+    document.getElementById('sl-ava').textContent=initials;
+    document.getElementById('sl-name').textContent=em.split('@')[0];
+  }
+  applyGuestMode();
+  loadData();if(!isGuest)subscribeRealtime();
+}
+function enterGuest(){
+  if(!sb){alert('Chưa kết nối Supabase. Nhấn badge kết nối trước.');return;}
+  isGuest=true;currentUser=null;
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('sl-ava').textContent='👁';
+  document.getElementById('sl-name').textContent='Khách';
+  document.getElementById('sl-role').textContent='Chỉ xem';
+  document.querySelector('.sl-logout').textContent='Đăng nhập';
+  document.querySelector('.sl-logout').onclick=()=>{isGuest=false;location.reload();};
+  applyGuestMode();
+  loadData();
+}
+function applyGuestMode(){
+  // Ẩn/hiện nút Thêm KH, Export CSV
+  const addBtn=document.getElementById('btn-add-cust');
+  if(addBtn)addBtn.style.display=isGuest?'none':'';
 }
 
 // ── SYNC BADGE ──────────────────────────────────
@@ -590,7 +626,7 @@ function subscribeRealtime(){
 }
 
 async function doUpsert(row){
-  if(!sb)return;setSyncBadge('ing','Lưu...');
+  if(!sb||isGuest)return;setSyncBadge('ing','Lưu...');
   try{
     const p={id:row.id,gender:row.gender,name:row.name,phone:row.phone,address:row.address,
       mat:row.products[0]?.mat||'',date:row.date||null,recall:row.recall||null,
@@ -611,7 +647,7 @@ function scheduleUpsert(row){
 }
 
 async function doDeleteApi(id){
-  if(!sb)return;setSyncBadge('ing','Xóa...');
+  if(!sb||isGuest)return;setSyncBadge('ing','Xóa...');
   try{const{error}=await sb.from('customers').delete().eq('id',sid(id));if(error)throw error;
     setSyncBadge('ok','Đã xóa ✓');setTimeout(()=>setSyncBadge('ok','⚡ Realtime'),1200);
   }catch(e){setSyncBadge('err','Lỗi xóa');}
@@ -684,25 +720,26 @@ function renderTable(data){
   if(currentPage>pages)currentPage=pages;
   const start=(currentPage-1)*PAGE_SIZE,pageData=data.slice(start,start+PAGE_SIZE);
 
+  const g=isGuest;
   document.getElementById('tbody').innerHTML=pageData.map((r,i)=>{
     const id=sid(r.id),vp=getViewProd(r),rc=getRowClass(r);
-    return `<tr class="${rc}" oncontextmenu="showCtx(event,'${id}')">
+    return `<tr class="${rc}"${g?'':` oncontextmenu="showCtx(event,'${id}')"`}>
       <td style="text-align:center;color:#9ca3af;font-size:10px;font-family:monospace;">${start+i+1}</td>
       <td style="font-weight:700;white-space:nowrap;font-size:11.5px;">${r.gender} ${r.name} – ${r.address}</td>
       <td style="font-family:monospace;font-size:10.5px;color:#6b7280;">${r.phone}</td>
       <td style="text-align:center;"><a class="zalo-icon" href="https://zalo.me/${r.phone}" target="_blank">Z</a></td>
-      <td>${prodSel(r)}</td>
+      <td>${g?`<span style="font-size:11px;">${(vp.name||vp.mat||'–')}</span>`:prodSel(r)}</td>
       <td><span class="mat-tag">${vp.mat||'–'}</span></td>
-      <td><input type="date" class="ii" value="${r.date||''}" onchange="upd('${id}','date',this.value)"></td>
-      <td><input type="date" class="ii" value="${r.recall||''}" onchange="upd('${id}','recall',this.value)" style="color:#2563eb;font-weight:600;"></td>
+      <td>${g?`<span style="font-size:11px;">${fD(r.date)}</span>`:`<input type="date" class="ii" value="${r.date||''}" onchange="upd('${id}','date',this.value)">`}</td>
+      <td>${g?`<span style="font-size:11px;color:#2563eb;font-weight:600;">${fD(r.recall)}</span>`:`<input type="date" class="ii" value="${r.recall||''}" onchange="upd('${id}','recall',this.value)" style="color:#2563eb;font-weight:600;">`}</td>
       <td style="font-size:11px;color:#6b7280;">${fD(vp.warranty)}</td>
-      <td>${sdSel(r.c01,'c01',id)}</td>
-      <td>${sdSel(r.c06,'c06',id)}</td>
-      <td>${sdSel(r.c12,'c12',id)}</td>
-      <td style="text-align:center;">${csatSel(r.csat,id)}</td>
-      <td>${deptHTML(r.dept,id)}</td>
-      <td><textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:155px;">${r.note||''}</textarea></td>
-      <td><button onclick="showCtx(event,'${id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:15px;padding:0;">⋮</button></td>
+      <td>${g?`<span class="sd sd-${r.c01}" style="pointer-events:none;">${SL[r.c01]||'–'}</span>`:sdSel(r.c01,'c01',id)}</td>
+      <td>${g?`<span class="sd sd-${r.c06}" style="pointer-events:none;">${SL[r.c06]||'–'}</span>`:sdSel(r.c06,'c06',id)}</td>
+      <td>${g?`<span class="sd sd-${r.c12}" style="pointer-events:none;">${SL[r.c12]||'–'}</span>`:sdSel(r.c12,'c12',id)}</td>
+      <td style="text-align:center;">${g?`<span style="font-size:11px;">${r.csat!==''&&r.csat!=null?r.csat+' ⭐':'–'}</span>`:csatSel(r.csat,id)}</td>
+      <td>${g?`<span style="font-size:10px;">${(Array.isArray(r.dept)?r.dept:[]).join(', ')||'–'}</span>`:deptHTML(r.dept,id)}</td>
+      <td style="font-size:11px;color:#6b7280;min-width:155px;">${g?(r.note||''):`<textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:155px;">${r.note||''}</textarea>`}</td>
+      ${g?'':`<td><button onclick="showCtx(event,'${id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:15px;padding:0;">⋮</button></td>`}
     </tr>`;
   }).join('');
   document.getElementById('cust-count').textContent=rows.length;
