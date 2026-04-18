@@ -250,7 +250,7 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
 .rpt-close{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;}
 /* NOTE HISTORY TOOLTIP */
 .note-wrap{position:relative;}
-.note-history{display:none;position:absolute;bottom:100%;left:0;z-index:80;background:#0d0d0d;color:#e5e7eb;border-radius:8px;padding:8px 10px;width:260px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:10px;margin-bottom:4px;}
+.note-history{display:none;position:absolute;bottom:100%;right:0;z-index:80;background:#0d0d0d;color:#e5e7eb;border-radius:8px;padding:8px 10px;width:260px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:10px;margin-bottom:4px;}
 .note-wrap:hover .note-history{display:block;}
 .note-history:empty{display:none!important;}
 .nh-item{padding:4px 0;border-bottom:1px solid #222;}
@@ -371,6 +371,8 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
           <th style="width:52px;text-align:center;">CSAT</th>
           <th style="min-width:100px;">Bộ phận</th>
           <th style="min-width:170px;">Ghi chú</th>
+          <th style="min-width:90px;">SP sự cố</th>
+          <th style="min-width:150px;">Mô tả sự cố</th>
           <th style="width:22px;cursor:default;"></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -645,7 +647,9 @@ function normalizeRow(r){
     csat:(r.csat===''||r.csat==null)?'':Number(r.csat),
     dept:Array.isArray(r.dept)?r.dept:(r.dept?JSON.parse(r.dept):[]),
     products:prods,
-    _viewProd:0 // index sản phẩm đang xem
+    issue_product:r.issue_product||'',
+    issue_desc:r.issue_desc||'',
+    _viewProd:0
   });
 }
 
@@ -696,7 +700,8 @@ async function doUpsert(row){
       c01:row.c01||'none',c06:row.c06||'none',c12:row.c12||'none',
       csat:row.csat===''?'':String(row.csat),
       dept:Array.isArray(row.dept)?row.dept:[],note:row.note||'',
-      products:row.products||[],staff:row.staff||''};
+      products:row.products||[],staff:row.staff||'',
+      issue_product:row.issue_product||'',issue_desc:row.issue_desc||''};
     const{error}=await sb.from('customers').upsert(p,{onConflict:'id'});
     if(error)throw error;
     setSyncBadge('ok','Đã lưu ✓');setTimeout(()=>setSyncBadge('ok','⚡ Realtime'),1200);
@@ -803,6 +808,8 @@ function renderTable(data){
       <td style="text-align:center;">${g?`<span style="font-size:11px;">${r.csat!==''&&r.csat!=null?r.csat+' ⭐':'–'}</span>`:csatSel(r.csat,id)}</td>
       <td>${g?`<span style="font-size:10px;">${(Array.isArray(r.dept)?r.dept:[]).join(', ')||'–'}</span>`:deptHTML(r.dept,id)}</td>
       <td style="font-size:11px;color:#6b7280;min-width:155px;">${g?(r.note||''):`<div class="note-wrap" onmouseenter="loadNoteHistory('${id}',this)"><textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:155px;">${r.note||''}</textarea><div class="note-history" id="nh-${id}"></div></div>`}</td>
+      <td>${g?`<span style="font-size:11px;">${r.issue_product||'–'}</span>`:`<select class="prod-dd" onchange="upd('${id}','issue_product',this.value)" style="max-width:90px;"><option value="">–</option>${PRODUCTS.map(p=>`<option${r.issue_product===p?' selected':''}>${p}</option>`).join('')}</select>`}</td>
+      <td>${g?`<span style="font-size:11px;">${r.issue_desc||''}</span>`:`<textarea class="ii" onblur="updIssueDesc('${id}',this.value)" style="min-width:140px;">${r.issue_desc||''}</textarea>`}</td>
       ${g?'':`<td><button onclick="showCtx(event,'${id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:15px;padding:0;">⋮</button></td>`}
     </tr>`;
   }).join('');
@@ -850,7 +857,13 @@ function updCsat(id,sel){
 }
 function updNote(id,value){
   id=sid(id);const r=rows.find(x=>x.id===id);if(!r||r.note===value)return;
-  r.note=value;scheduleUpsert(r);
+  const old=r.note;r.note=value;
+  logAction(id,r.gender+' '+r.name,'update','note',old||'',value);
+  scheduleUpsert(r);
+}
+function updIssueDesc(id,value){
+  id=sid(id);const r=rows.find(x=>x.id===id);if(!r||r.issue_desc===value)return;
+  r.issue_desc=value;scheduleUpsert(r);
 }
 
 // ── SORT ─────────────────────────────────────────
@@ -1097,15 +1110,12 @@ async function loadNoteHistory(custId,wrapEl){
   if(_nhCache[custId]){el.innerHTML=_nhCache[custId];return;}
   el.innerHTML='<div style="color:#6b7280;padding:2px;">Đang tải...</div>';
   try{
-    const{data}=await sb.from('audit_logs').select('*').eq('customer_id',custId).order('created_at',{ascending:false}).limit(20);
+    const{data}=await sb.from('audit_logs').select('*').eq('customer_id',custId).eq('field','note').order('created_at',{ascending:false}).limit(15);
     if(!data||!data.length){el.innerHTML='';_nhCache[custId]='';return;}
     const html=data.map(l=>{
       const d=new Date(l.created_at);
       const ts=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
-      const icons={create:'🟢 Thêm',update:'✏️',delete:'🔴 Xóa'};
-      let desc=`<span class="nh-field">${l.field||l.action}</span>`;
-      if(l.old_value||l.new_value)desc+=`<div class="nh-vals">${l.old_value||'–'} → ${l.new_value||'–'}</div>`;
-      return `<div class="nh-item"><span class="nh-time">${ts}</span> ${icons[l.action]||''} ${desc}</div>`;
+      return `<div class="nh-item"><span class="nh-time">${ts}</span><div class="nh-vals">${l.new_value||'–'}</div></div>`;
     }).join('');
     el.innerHTML=html;_nhCache[custId]=html;
   }catch(e){el.innerHTML='';}
