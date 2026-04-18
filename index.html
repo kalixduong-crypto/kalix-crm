@@ -104,7 +104,7 @@ tr.row-today:hover{background:#fef3c7!important;}
 .ii:focus{border-color:var(--g);background:#fff;box-shadow:0 0 0 3px rgba(212,175,55,.1);}
 textarea.ii{resize:none;height:24px;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:height .2s;}
 textarea.ii:focus{height:60px;white-space:pre-wrap;overflow-y:auto;}
-input[type=date].ii{width:105px;font-size:11px;}
+input[type=date].ii{width:105px;font-size:11px;font-family:'Inter',sans-serif;}
 
 /* Status dropdowns - tăng font */
 select.sd{appearance:none;cursor:pointer;padding:3px 18px 3px 7px;border-radius:6px;font-size:11px;font-weight:700;border:1.5px solid transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 3px center;background-size:9px;outline:none;}
@@ -257,7 +257,7 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
 
 /* NOTE HISTORY TOOLTIP */
 .note-wrap{position:relative;}
-.note-history{display:none;position:absolute;bottom:100%;right:0;z-index:80;background:#0d0d0d;color:#e5e7eb;border-radius:8px;padding:8px 10px;width:260px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:10px;margin-bottom:4px;}
+.note-history{display:none;position:absolute;bottom:100%;right:0;z-index:80;background:rgba(13,13,13,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#e5e7eb;border-radius:10px;padding:8px 10px;width:270px;max-height:200px;overflow-y:auto;box-shadow:0 8px 28px rgba(0,0,0,.35);font-size:10px;margin-bottom:4px;border:1px solid rgba(255,255,255,.08);}
 .note-wrap:hover .note-history{display:block;}
 .note-history:empty{display:none!important;}
 .nh-item{padding:4px 0;border-bottom:1px solid #222;}
@@ -636,8 +636,9 @@ function applyGuestMode(){
   // Ẩn/hiện nút Thêm KH, Export CSV
   const addBtn=document.getElementById('btn-add-cust');
   if(addBtn)addBtn.style.display=isGuest?'none':'';
-  const rptBtn=document.getElementById('btn-report');
-  if(rptBtn)rptBtn.style.display=isGuest?'none':'';
+  // Guest cũng xem được report
+  // const rptBtn=document.getElementById('btn-report');
+  // if(rptBtn)rptBtn.style.display=isGuest?'none':'';
   // Ẩn cột ⋮ trong header khi guest
   const ths=document.querySelectorAll('thead th');
   if(ths.length){const lastTh=ths[ths.length-1];lastTh.style.display=isGuest?'none':'';}
@@ -809,17 +810,17 @@ function renderTable(data){
       <td style="text-align:center;"><a class="zalo-icon" href="https://zalo.me/${r.phone}" target="_blank">Z</a></td>
       <td>${g?`<span class="prod-dd" style="pointer-events:none;opacity:.85;display:inline-block;">${(vp.name||vp.mat||'–')}</span>`:prodSel(r)}</td>
       <td><span class="mat-tag">${vp.mat||'–'}</span></td>
-      <td>${g?`<span style="font-size:11px;font-family:monospace;color:#374151;">${fD(r.date)}</span>`:`<input type="date" class="ii" value="${r.date||''}" onchange="upd('${id}','date',this.value)">`}</td>
-      <td>${g?`<span style="font-size:11px;font-family:monospace;color:#2563eb;font-weight:600;">${fD(r.recall)}</span>`:`<input type="date" class="ii" value="${r.recall||''}" onchange="upd('${id}','recall',this.value)" style="color:#2563eb;font-weight:600;">`}</td>
+      <td>${g?`<span style="font-size:11px;color:#374151;">${fD(r.date)}</span>`:`<input type="date" class="ii" value="${r.date||''}" onchange="upd('${id}','date',this.value)">`}</td>
+      <td>${g?`<span style="font-size:11px;color:#2563eb;font-weight:500;">${fD(r.recall)}</span>`:`<input type="date" class="ii" value="${r.recall||''}" onchange="upd('${id}','recall',this.value)" style="color:#2563eb;font-weight:500;">`}</td>
       <td style="font-size:11px;color:#6b7280;">${fD(vp.warranty)}</td>
       <td>${g?`<span class="sd sd-${r.c01}" style="pointer-events:none;">${SL[r.c01]||'–'}</span>`:sdSel(r.c01,'c01',id)}</td>
       <td>${g?`<span class="sd sd-${r.c06}" style="pointer-events:none;">${SL[r.c06]||'–'}</span>`:sdSel(r.c06,'c06',id)}</td>
       <td>${g?`<span class="sd sd-${r.c12}" style="pointer-events:none;">${SL[r.c12]||'–'}</span>`:sdSel(r.c12,'c12',id)}</td>
       <td style="text-align:center;">${g?(r.csat!==''&&r.csat!=null?`<span style="font-size:12px;font-weight:800;color:var(--g);">${r.csat} ⭐</span>`:`<span style="font-size:11px;color:#9ca3af;">–</span>`):csatSel(r.csat,id)}</td>
       <td>${g?`<div style="display:flex;gap:3px;flex-wrap:wrap;">${(Array.isArray(r.dept)?r.dept:[]).length?(Array.isArray(r.dept)?r.dept:[]).map(d=>`<span class="dept-tag">${d}</span>`).join(''):'<span style="color:#9ca3af;font-size:10px;">–</span>'}</div>`:deptHTML(r.dept,id)}</td>
-      <td><div class="cell-clamp">${g?(r.note||'<span style="color:#9ca3af;">–</span>'):`<div class="note-wrap" onmouseenter="loadNoteHistory('${id}',this)"><textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:140px;">${r.note||''}</textarea><div class="note-history" id="nh-${id}"></div></div>`}</div></td>
+      <td>${g?`<div class="cell-clamp">${r.note||'<span style="color:#9ca3af;">–</span>'}</div>`:`<div class="note-wrap" onmouseenter="loadNoteHistory('${id}',this)"><textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:140px;">${r.note||''}</textarea><div class="note-history" id="nh-${id}"></div></div>`}</td>
       <td>${g?(r.issue_product?`<span class="mat-tag">${r.issue_product}</span>`:`<span style="color:#9ca3af;font-size:10px;">–</span>`):`<select class="prod-dd" onchange="upd('${id}','issue_product',this.value)" style="max-width:90px;"><option value="">–</option>${PRODUCTS.map(p=>`<option${r.issue_product===p?' selected':''}>${p}</option>`).join('')}</select>`}</td>
-      <td><div class="cell-clamp">${g?(r.issue_desc||'<span style="color:#9ca3af;">–</span>'):`<textarea class="ii" onblur="updIssueDesc('${id}',this.value)" style="min-width:130px;">${r.issue_desc||''}</textarea>`}</div></td>
+      <td>${g?`<div class="cell-clamp">${r.issue_desc||'<span style="color:#9ca3af;">–</span>'}</div>`:`<textarea class="ii" onblur="updIssueDesc('${id}',this.value)" style="min-width:130px;">${r.issue_desc||''}</textarea>`}</td>
       ${g?'':`<td><button onclick="showCtx(event,'${id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:15px;padding:0;">⋮</button></td>`}
     </tr>`;
   }).join('');
@@ -1120,12 +1121,18 @@ async function loadNoteHistory(custId,wrapEl){
   if(_nhCache[custId]){el.innerHTML=_nhCache[custId];return;}
   el.innerHTML='<div style="color:#6b7280;padding:2px;">Đang tải...</div>';
   try{
-    const{data}=await sb.from('audit_logs').select('*').eq('customer_id',custId).eq('field','note').order('created_at',{ascending:false}).limit(15);
+    const{data}=await sb.from('audit_logs').select('*').eq('customer_id',custId).in('field',['note','c01','c06','c12']).order('created_at',{ascending:false}).limit(20);
     if(!data||!data.length){el.innerHTML='';_nhCache[custId]='';return;}
+    const FL={'c01':'C01','c06':'C06','c12':'C12'};
     const html=data.map(l=>{
       const d=new Date(l.created_at);
       const ts=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
-      return `<div class="nh-item"><span class="nh-time">${ts}</span><div class="nh-vals">${l.new_value||'–'}</div></div>`;
+      if(l.field==='note'){
+        return `<div class="nh-item"><span class="nh-time">${ts}</span><div class="nh-vals">${l.new_value||'–'}</div></div>`;
+      }
+      const label=FL[l.field]||l.field;
+      const sv=SL[l.new_value]||l.new_value||'–';
+      return `<div class="nh-item"><span class="nh-time">${ts}</span><div class="nh-vals"><span style="color:var(--g);font-weight:600;">${label}</span> → ${sv}</div></div>`;
     }).join('');
     el.innerHTML=html;_nhCache[custId]=html;
   }catch(e){el.innerHTML='';}
@@ -1136,7 +1143,7 @@ let _rptText='';
 async function openReport(){
   const today=TODAY;
   const todayFmt=today.split('-').reverse().join('/');
-  const user=currentUser?currentUser.email.split('@')[0]:'–';
+  const user=currentUser?currentUser.email.split('@')[0]:(isGuest?'Khách':'–');
   const body=document.getElementById('rpt-body');
   body.innerHTML='<p style="text-align:center;color:#9ca3af;padding:20px;">Đang tải dữ liệu...</p>';
   document.getElementById('rpt-date').textContent=todayFmt+' · '+user;
