@@ -110,7 +110,7 @@ select.sd{appearance:none;cursor:pointer;padding:3px 18px 3px 7px;border-radius:
 .sd-done{color:#16a34a;background:#dcfce7;border-color:#86efac!important;}
 .sd-overdue{color:#dc2626;background:#fee2e2;border-color:#fca5a5!important;}
 .sd-pending{color:#d97706;background:#fef3c7;border-color:#fcd34d!important;}
-.sd-none{color:#2563eb;background:#eff6ff;border-color:#bfdbfe!important;}
+.sd-none{color:#9ca3af;background:#f3f4f6;border-color:#e5e7eb!important;}
 
 /* Product dropdown */
 select.prod-dd{appearance:none;cursor:pointer;padding:2px 16px 2px 5px;border-radius:5px;font-size:10.5px;font-weight:700;border:1px solid transparent;color:#374151;background:#f9fafb;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center;background-size:8px;outline:none;max-width:90px;}
@@ -216,6 +216,38 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
 .add-btn:hover{background:var(--g);color:#000;}
 .csv-btn{background:#f9fafb;color:#374151;padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid #e5e7eb;cursor:pointer;}
 .csv-btn:hover{background:#fef9e7;border-color:var(--g);color:var(--gd);}
+.rpt-btn{background:#0d0d0d;color:var(--g);padding:7px 13px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid #333;cursor:pointer;white-space:nowrap;}
+.rpt-btn:hover{background:var(--g);color:#000;}
+
+/* REPORT MODAL */
+.rpt-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;}
+.rpt-modal.open{display:flex;}
+.rpt-card{background:#fff;border-radius:14px;width:520px;max-width:100%;box-shadow:0 20px 50px rgba(0,0,0,.15);overflow:hidden;}
+.rpt-head{background:#0d0d0d;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+.rpt-head h3{color:var(--g);font-size:16px;font-weight:900;margin:0;}
+.rpt-head .rpt-date{color:#6b7280;font-size:11px;}
+.rpt-head button{background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;}
+.rpt-body{padding:20px;}
+.rpt-section{margin-bottom:18px;}
+.rpt-section-title{font-size:11px;font-weight:800;color:#0d0d0d;text-transform:uppercase;letter-spacing:.08em;padding-bottom:6px;border-bottom:2px solid var(--g);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.rpt-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid #f3f4f6;}
+.rpt-row:last-child{border-bottom:none;}
+.rpt-label{color:#6b7280;font-weight:600;}
+.rpt-val{font-weight:800;color:#111;}
+.rpt-val.green{color:#16a34a;}
+.rpt-val.red{color:#dc2626;}
+.rpt-val.yellow{color:#d97706;}
+.rpt-val.gray{color:#9ca3af;}
+.rpt-list{margin:6px 0 0;padding:0;}
+.rpt-list-item{display:flex;align-items:flex-start;gap:6px;padding:5px 10px;font-size:11px;color:#374151;background:#f9fafb;border-radius:6px;margin-bottom:4px;}
+.rpt-list-item .rpt-cust{font-weight:700;white-space:nowrap;}
+.rpt-list-item .rpt-note{color:#6b7280;font-size:10px;margin-top:1px;}
+.rpt-bar{height:6px;border-radius:3px;background:#f3f4f6;overflow:hidden;margin-top:3px;}
+.rpt-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+.rpt-footer{padding:12px 20px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;}
+.rpt-copy{background:var(--g);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;}
+.rpt-copy:hover{background:var(--gd);color:#fff;}
+.rpt-close{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px;}
 </style>
@@ -287,6 +319,7 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
           <span class="sdot"></span><span id="sync-lbl">...</span>
         </div>
         <input type="text" id="search-box" class="search-i" oninput="applyFilter()" placeholder="🔍 Tìm tên, SĐT, tỉnh...">
+        <button class="rpt-btn" id="btn-report" onclick="openReport()">📋 Báo cáo</button>
         <button class="csv-btn" onclick="exportCSV()">📥 CSV</button>
         <button class="add-btn" id="btn-add-cust" onclick="openModal(null)">+ Thêm KH</button>
       </div>
@@ -412,15 +445,13 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
       <div><label class="fl">Tỉnh / Thành phố *</label><input type="text" id="f-address" class="fld" list="province-list" placeholder="Chọn hoặc nhập..."><datalist id="province-list"></datalist></div>
       <div><label class="fl">Ngày giao *</label><input type="date" id="f-date" class="fld"></div>
       <div><label class="fl">Ngày gọi lại</label><input type="date" id="f-recall" class="fld"></div>
-      <div><label class="fl">Nhân viên phụ trách</label><input type="text" id="f-staff" class="fld" placeholder="VD: Ngân"></div>
-      <div></div>
       <!-- PRODUCTS SECTION -->
       <div class="full">
         <label class="fl">Sản phẩm *</label>
         <div class="prod-list" id="f-prod-list"></div>
         <div class="prod-add-row">
           <div style="flex:2;">
-            <select id="f-prod-name" class="fld" style="padding:6px 8px;font-size:12px;">
+            <select id="f-prod-name" class="fld" style="padding:6px 8px;font-size:12px;" onchange="onProdNameChange()">
               <option value="">Chọn sản phẩm</option>
               <option>Sofa</option><option>Bàn trà</option><option>Bàn ghế ăn</option>
             </select>
@@ -428,7 +459,6 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
           <div style="flex:1;">
             <select id="f-prod-mat" class="fld" style="padding:6px 8px;font-size:12px;">
               <option value="">Chất liệu</option>
-              <option>Da Laquila</option><option>Da Rio</option><option>Da Leone</option><option>Da bò</option><option>Vải nỉ</option>
             </select>
           </div>
           <button onclick="addProductToModal()" style="background:var(--g);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;">+ Thêm</button>
@@ -459,6 +489,21 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
   </div>
 </div>
 
+<!-- REPORT MODAL -->
+<div class="rpt-modal" id="report-modal" onclick="if(event.target===this)closeReport()">
+  <div class="rpt-card">
+    <div class="rpt-head">
+      <div><h3>📋 Báo cáo CSKH</h3><span class="rpt-date" id="rpt-date"></span></div>
+      <button onclick="closeReport()">×</button>
+    </div>
+    <div class="rpt-body" id="rpt-body"></div>
+    <div class="rpt-footer">
+      <button class="rpt-close" onclick="closeReport()">Đóng</button>
+      <button class="rpt-copy" onclick="copyReport()">📋 Copy text</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════
 // KALIX CRM V2 – 20+ cải tiến
@@ -480,7 +525,9 @@ function initSupabase(){
 // ── CONSTANTS ────────────────────────────────────
 const PROVINCES=['An Giang','Bà Rịa - Vũng Tàu','Bắc Giang','Bắc Kạn','Bạc Liêu','Bắc Ninh','Bến Tre','Bình Định','Bình Dương','Bình Phước','Bình Thuận','Cà Mau','Cần Thơ','Cao Bằng','Đà Nẵng','Đắk Lắk','Đắk Nông','Điện Biên','Đồng Nai','Đồng Tháp','Gia Lai','Hà Giang','Hà Nam','Hà Nội','Hà Tĩnh','Hải Dương','Hải Phòng','Hậu Giang','Hòa Bình','Hưng Yên','Khánh Hòa','Kiên Giang','Kon Tum','Lai Châu','Lâm Đồng','Lạng Sơn','Lào Cai','Long An','Nam Định','Nghệ An','Ninh Bình','Ninh Thuận','Phú Thọ','Phú Yên','Quảng Bình','Quảng Nam','Quảng Ngãi','Quảng Ninh','Quảng Trị','Sóc Trăng','Sơn La','Tây Ninh','Thái Bình','Thái Nguyên','Thanh Hóa','Thừa Thiên Huế','Tiền Giang','TP. Hồ Chí Minh','Trà Vinh','Tuyên Quang','Vĩnh Long','Vĩnh Phúc','Yên Bái'];
 const MATS=['Da Laquila','Da Rio','Da Leone','Da bò','Vải nỉ'];
-const WARRANTY_MONTHS={'Da Laquila':12,'Da Rio':18,'Da Leone':24,'Da bò':24,'Vải nỉ':12};
+const PRODUCTS=['Sofa','Bàn trà','Bàn ghế ăn'];
+const MATS_BY_PRODUCT={'Sofa':['Da Laquila','Da Rio','Da Leone','Da bò','Vải nỉ'],'Bàn trà':['Mặt kính','Mặt đá'],'Bàn ghế ăn':['Mặt kính','Mặt đá']};
+const WARRANTY_MONTHS={'Da Laquila':12,'Da Rio':18,'Da Leone':24,'Da bò':24,'Vải nỉ':12,'Mặt kính':12,'Mặt đá':12,'':12};
 const DEPTS=['Sales','PO','QC','Giao hàng','MKT','3D'];
 const SL={done:'✔ Đã xong',none:'— Chưa gọi',pending:'⏳ Đang chờ',overdue:'✖ Quá hạn'};
 const TODAY=new Date().toISOString().split('T')[0];
@@ -570,6 +617,8 @@ function applyGuestMode(){
   // Ẩn/hiện nút Thêm KH, Export CSV
   const addBtn=document.getElementById('btn-add-cust');
   if(addBtn)addBtn.style.display=isGuest?'none':'';
+  const rptBtn=document.getElementById('btn-report');
+  if(rptBtn)rptBtn.style.display=isGuest?'none':'';
 }
 
 // ── SYNC BADGE ──────────────────────────────────
@@ -684,9 +733,10 @@ async function loadLogs(){
 // ── PRODUCT HELPERS ─────────────────────────────
 function getViewProd(r){return r.products[r._viewProd||0]||{name:'–',mat:'–',warranty:''};}
 function calcWarranty(dateStr,mat){
-  if(!dateStr||!mat||!WARRANTY_MONTHS[mat])return'';
+  if(!dateStr)return'';
+  const months=WARRANTY_MONTHS[mat]||12; // mặc định 12 tháng nếu trống
   const d=new Date(dateStr);if(isNaN(d.getTime()))return'';
-  d.setMonth(d.getMonth()+WARRANTY_MONTHS[mat]);return d.toISOString().split('T')[0];
+  d.setMonth(d.getMonth()+months);return d.toISOString().split('T')[0];
 }
 
 // ── TABLE RENDER ────────────────────────────────
@@ -706,8 +756,9 @@ function deptHTML(depts,id){
 }
 function prodSel(r){
   const id=r.id,prods=r.products;
-  if(!prods||prods.length<=1){const p=prods[0];return p?`<span style="font-size:11px;font-weight:600;">${p.name||p.mat}</span>`:'<span style="color:#9ca3af;font-size:10px;">–</span>';}
-  return `<select class="prod-dd" onchange="switchProd('${id}',this.selectedIndex)">${prods.map((p,i)=>`<option${i===(r._viewProd||0)?' selected':''}>${p.name||p.mat}</option>`).join('')}</select>`;
+  if(!prods||!prods.length)return'<span style="color:#9ca3af;font-size:10px;">–</span>';
+  // Luôn hiện dropdown để đồng nhất kích thước cột
+  return `<select class="prod-dd" onchange="switchProd('${id}',this.selectedIndex)"${prods.length<=1?' style="pointer-events:none;opacity:.85;"':''}>${prods.map((p,i)=>`<option${i===(r._viewProd||0)?' selected':''}>${p.name||p.mat}</option>`).join('')}</select>`;
 }
 
 function getRowClass(r){
@@ -945,7 +996,7 @@ function openModal(id){
   if(!id){
     document.getElementById('modal-title').textContent='➕ Thêm Khách hàng mới';
     document.getElementById('btn-save').textContent='✓ Thêm vào CRM';
-    ['f-name','f-phone','f-address','f-staff'].forEach(x=>document.getElementById(x).value='');
+    ['f-name','f-phone','f-address'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('f-gender').value='Anh';
     document.getElementById('f-date').value=TODAY;
     document.getElementById('f-recall').value='';
@@ -963,7 +1014,6 @@ function openModalWithData(r){
   document.getElementById('f-address').value=r.address;
   document.getElementById('f-date').value=r.date||'';
   document.getElementById('f-recall').value=r.recall||'';
-  document.getElementById('f-staff').value=r.staff||'';
   modalProducts=[...r.products.map(p=>({...p}))];
   renderModalProducts();
   document.getElementById('edit-modal').classList.add('open');
@@ -981,16 +1031,22 @@ function renderModalProducts(){
     <button class="prod-rm" onclick="removeModalProd(${i})">✕</button>
   </div>`).join('');
 }
+function onProdNameChange(){
+  const name=document.getElementById('f-prod-name').value;
+  const matSel=document.getElementById('f-prod-mat');
+  const mats=MATS_BY_PRODUCT[name]||[];
+  matSel.innerHTML='<option value="">Chất liệu</option>'+mats.map(m=>`<option>${m}</option>`).join('');
+}
 function addProductToModal(){
   const name=document.getElementById('f-prod-name').value;
   const mat=document.getElementById('f-prod-mat').value;
   const dateStr=document.getElementById('f-date').value;
   if(!name){alert('Chọn sản phẩm');return;}
-  if(!mat){alert('Chọn chất liệu');return;}
-  const warranty=calcWarranty(dateStr,mat);
-  modalProducts.push({name,mat,warranty});
+  // Chất liệu trống → mặc định BH 12 tháng
+  const warranty=calcWarranty(dateStr,mat||'');
+  modalProducts.push({name,mat:mat||'Không',warranty});
   document.getElementById('f-prod-name').value='';
-  document.getElementById('f-prod-mat').value='';
+  document.getElementById('f-prod-mat').innerHTML='<option value="">Chất liệu</option>';
   renderModalProducts();
 }
 function removeModalProd(i){modalProducts.splice(i,1);renderModalProducts();}
@@ -998,8 +1054,7 @@ function removeModalProd(i){modalProducts.splice(i,1);renderModalProducts();}
 function saveCustomer(){
   const gender=document.getElementById('f-gender').value,name=document.getElementById('f-name').value.trim(),
     phone=document.getElementById('f-phone').value.trim(),address=document.getElementById('f-address').value.trim(),
-    date=document.getElementById('f-date').value,recall=document.getElementById('f-recall').value,
-    staff=document.getElementById('f-staff').value.trim();
+    date=document.getElementById('f-date').value,recall=document.getElementById('f-recall').value;
   const errs=[];
   if(!name)errs.push('Tên');if(!/^0\d{8,9}$/.test(phone))errs.push('SĐT (0xxx, 9-10 số)');
   if(!address)errs.push('Tỉnh/TP');if(!date)errs.push('Ngày giao');
@@ -1012,28 +1067,126 @@ function saveCustomer(){
   let newRow;
   if(editingId){
     const idx=rows.findIndex(r=>r.id===sid(editingId));
-    rows[idx]=Object.assign({},rows[idx],{gender,name,address,phone,date,recall,staff,products:modalProducts,_viewProd:0});
+    rows[idx]=Object.assign({},rows[idx],{gender,name,address,phone,date,recall,products:modalProducts,_viewProd:0});
     newRow=rows[idx];
     logAction(editingId,gender+' '+name,'update','info',null,'Sửa thông tin');
   }else{
-    newRow={id:sid(Date.now()),gender,name,address,phone,date,recall,staff,
-      products:modalProducts,c01:'none',c06:'none',c12:'none',csat:'',dept:[],note:'',_viewProd:0};
+    newRow={id:sid(Date.now()),gender,name,address,phone,date,recall,
+      products:modalProducts,c01:'none',c06:'none',c12:'none',csat:'',dept:[],note:'',staff:'',_viewProd:0};
     rows.unshift(newRow);
     logAction(newRow.id,gender+' '+name,'create',null,null,null);
   }
   renderTable();updateStats();updateBanners();closeModal();scheduleUpsert(newRow);
 }
 
+// ── DAILY REPORT ────────────────────────────────
+let _rptText='';
+function openReport(){
+  const today=TODAY;
+  const todayFmt=today.split('-').reverse().join('/');
+  const user=currentUser?currentUser.email.split('@')[0]:'–';
+
+  // Phân nhóm: cần gọi hôm nay = recall<=today hoặc overdue
+  const needCall=rows.filter(r=>r.recall&&r.recall<=today);
+  // Đã xong (nghe máy) = ít nhất 1 trong c01/c06/c12 = done
+  const done=needCall.filter(r=>r.c01==='done'||r.c06==='done'||r.c12==='done');
+  // Không nghe máy / Thuê bao = pending
+  const pending=needCall.filter(r=>(r.c01==='pending'||r.c06==='pending'||r.c12==='pending')&&r.c01!=='done'&&r.c06!=='done'&&r.c12!=='done');
+  // Chưa gọi
+  const notCalled=needCall.filter(r=>!done.includes(r)&&!pending.includes(r));
+
+  const total=needCall.length;
+  const doneN=done.length,pendN=pending.length,noneN=notCalled.length;
+
+  // CSAT
+  const rated=rows.filter(r=>r.csat!==''&&r.csat!=null&&!isNaN(Number(r.csat)));
+  const happy=rated.filter(r=>Number(r.csat)>=4);
+  const unhappy=rated.filter(r=>Number(r.csat)<=3);
+
+  // Build HTML
+  let h='';
+
+  // Section 1: Tổng hợp cuộc gọi
+  h+=`<div class="rpt-section">
+    <div class="rpt-section-title">📞 Tổng hợp cuộc gọi</div>
+    <div class="rpt-row"><span class="rpt-label">Tổng số cần gọi</span><span class="rpt-val">${total}</span></div>
+    <div class="rpt-row"><span class="rpt-label">Đã gọi (nghe máy)</span><span class="rpt-val green">${doneN}/${total}</span></div>
+    <div class="rpt-bar"><div class="rpt-bar-fill" style="width:${total?Math.round(doneN/total*100):0}%;background:#22c55e;"></div></div>
+    <div class="rpt-row"><span class="rpt-label">Không nghe máy / Thuê bao</span><span class="rpt-val yellow">${pendN}/${total}</span></div>`;
+  if(pending.length){
+    h+='<div class="rpt-list">';
+    pending.forEach(r=>{h+=`<div class="rpt-list-item"><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}</span></div>`;});
+    h+='</div>';
+  }
+  h+=`<div class="rpt-row"><span class="rpt-label">Chưa gọi</span><span class="rpt-val gray">${noneN}/${total}</span></div>`;
+  if(notCalled.length){
+    h+='<div class="rpt-list">';
+    notCalled.forEach(r=>{h+=`<div class="rpt-list-item"><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}</span></div>`;});
+    h+='</div>';
+  }
+  h+='</div>';
+
+  // Section 2: Đánh giá khách hàng
+  h+=`<div class="rpt-section">
+    <div class="rpt-section-title">⭐ Đánh giá khách hàng</div>
+    <div class="rpt-row"><span class="rpt-label">Hài lòng (4-5⭐)</span><span class="rpt-val green">${happy.length} khách</span></div>`;
+  if(happy.length){
+    h+='<div class="rpt-list">';
+    happy.forEach(r=>{
+      const note=r.note?`<div class="rpt-note">💬 ${r.note}</div>`:'';
+      h+=`<div class="rpt-list-item"><div><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐</span>${note}</div></div>`;
+    });
+    h+='</div>';
+  }
+  h+=`<div class="rpt-row"><span class="rpt-label">Không hài lòng (1-3⭐)</span><span class="rpt-val red">${unhappy.length} khách</span></div>`;
+  if(unhappy.length){
+    h+='<div class="rpt-list">';
+    unhappy.forEach(r=>{
+      const note=r.note?`<div class="rpt-note">💬 ${r.note}</div>`:'';
+      h+=`<div class="rpt-list-item"><div><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐</span>${note}</div></div>`;
+    });
+    h+='</div>';
+  }
+  h+='</div>';
+
+  document.getElementById('rpt-date').textContent=todayFmt+' · '+user;
+  document.getElementById('rpt-body').innerHTML=h;
+  document.getElementById('report-modal').classList.add('open');
+
+  // Build plain text for copy
+  let t=`📋 BÁO CÁO CSKH - ${todayFmt}\nNhân viên: ${user}\n\n`;
+  t+=`═══ TỔNG HỢP CUỘC GỌI ═══\n`;
+  t+=`• Tổng số cần gọi: ${total}\n`;
+  t+=`• Đã gọi (nghe máy): ${doneN}/${total}\n`;
+  t+=`• Không nghe máy / Thuê bao: ${pendN}/${total}\n`;
+  pending.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}\n`;});
+  t+=`• Chưa gọi: ${noneN}/${total}\n`;
+  notCalled.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}\n`;});
+  t+=`\n═══ ĐÁNH GIÁ KHÁCH HÀNG ═══\n`;
+  t+=`• Hài lòng (4-5⭐): ${happy.length} khách\n`;
+  happy.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐\n`;if(r.note)t+=`    💬 ${r.note}\n`;});
+  t+=`• Không hài lòng (1-3⭐): ${unhappy.length} khách\n`;
+  unhappy.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐\n`;if(r.note)t+=`    💬 ${r.note}\n`;});
+  _rptText=t;
+}
+function closeReport(){document.getElementById('report-modal').classList.remove('open');}
+function copyReport(){
+  navigator.clipboard.writeText(_rptText).then(()=>{
+    const btn=document.querySelector('.rpt-copy');btn.textContent='✓ Đã copy!';
+    setTimeout(()=>{btn.textContent='📋 Copy text';},1500);
+  });
+}
+
 // ── EXPORT CSV ──────────────────────────────────
 function exportCSV(){
-  const headers=['#','Danh xưng','Tên','SĐT','Tỉnh/TP','Sản phẩm','Chất liệu','Ngày giao','Gọi lại','Bảo hành','C01','C06','C12','CSAT','Bộ phận','NV phụ trách','Ghi chú'];
+  const headers=['#','Danh xưng','Tên','SĐT','Tỉnh/TP','Sản phẩm','Chất liệu','Ngày giao','Gọi lại','Bảo hành','C01','C06','C12','CSAT','Bộ phận','Ghi chú'];
   const csvRows=[headers.join(',')];
   rows.forEach((r,i)=>{
     const vp=getViewProd(r);
     const line=[i+1,r.gender,'"'+r.name+'"',r.phone,'"'+r.address+'"',
       '"'+r.products.map(p=>p.name).join('; ')+'"','"'+r.products.map(p=>p.mat).join('; ')+'"',
       r.date||'',r.recall||'',r.products.map(p=>p.warranty).join('; '),
-      r.c01,r.c06,r.c12,r.csat,(r.dept||[]).join('; '),r.staff||'','"'+(r.note||'').replace(/"/g,'""')+'"'];
+      r.c01,r.c06,r.c12,r.csat,(r.dept||[]).join('; '),'"'+(r.note||'').replace(/"/g,'""')+'"'];
     csvRows.push(line.join(','));
   });
   const blob=new Blob(['\ufeff'+csvRows.join('\n')],{type:'text/csv;charset=utf-8;'});
