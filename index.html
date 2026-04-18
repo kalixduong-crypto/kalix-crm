@@ -248,6 +248,16 @@ select.csat-dd.no-rating{color:#9ca3af;font-size:11px;font-weight:600;}
 .rpt-copy{background:var(--g);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;}
 .rpt-copy:hover{background:var(--gd);color:#fff;}
 .rpt-close{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;}
+/* NOTE HISTORY TOOLTIP */
+.note-wrap{position:relative;}
+.note-history{display:none;position:absolute;bottom:100%;left:0;z-index:80;background:#0d0d0d;color:#e5e7eb;border-radius:8px;padding:8px 10px;width:260px;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:10px;margin-bottom:4px;}
+.note-wrap:hover .note-history{display:block;}
+.note-history:empty{display:none!important;}
+.nh-item{padding:4px 0;border-bottom:1px solid #222;}
+.nh-item:last-child{border-bottom:none;}
+.nh-time{color:#6b7280;font-size:9px;}
+.nh-field{color:var(--g);font-weight:700;}
+.nh-vals{color:#d1d5db;margin-top:1px;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px;}
 </style>
@@ -792,7 +802,7 @@ function renderTable(data){
       <td>${g?`<span class="sd sd-${r.c12}" style="pointer-events:none;">${SL[r.c12]||'–'}</span>`:sdSel(r.c12,'c12',id)}</td>
       <td style="text-align:center;">${g?`<span style="font-size:11px;">${r.csat!==''&&r.csat!=null?r.csat+' ⭐':'–'}</span>`:csatSel(r.csat,id)}</td>
       <td>${g?`<span style="font-size:10px;">${(Array.isArray(r.dept)?r.dept:[]).join(', ')||'–'}</span>`:deptHTML(r.dept,id)}</td>
-      <td style="font-size:11px;color:#6b7280;min-width:155px;">${g?(r.note||''):`<textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:155px;">${r.note||''}</textarea>`}</td>
+      <td style="font-size:11px;color:#6b7280;min-width:155px;">${g?(r.note||''):`<div class="note-wrap" onmouseenter="loadNoteHistory('${id}',this)"><textarea class="ii" onblur="updNote('${id}',this.value)" style="min-width:155px;">${r.note||''}</textarea><div class="note-history" id="nh-${id}"></div></div>`}</td>
       ${g?'':`<td><button onclick="showCtx(event,'${id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:15px;padding:0;">⋮</button></td>`}
     </tr>`;
   }).join('');
@@ -1079,94 +1089,148 @@ function saveCustomer(){
   renderTable();updateStats();updateBanners();closeModal();scheduleUpsert(newRow);
 }
 
+// ── NOTE HISTORY TOOLTIP ────────────────────────
+const _nhCache={};
+async function loadNoteHistory(custId,wrapEl){
+  const el=wrapEl.querySelector('.note-history');
+  if(!el||!sb)return;
+  if(_nhCache[custId]){el.innerHTML=_nhCache[custId];return;}
+  el.innerHTML='<div style="color:#6b7280;padding:2px;">Đang tải...</div>';
+  try{
+    const{data}=await sb.from('audit_logs').select('*').eq('customer_id',custId).order('created_at',{ascending:false}).limit(20);
+    if(!data||!data.length){el.innerHTML='';_nhCache[custId]='';return;}
+    const html=data.map(l=>{
+      const d=new Date(l.created_at);
+      const ts=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+      const icons={create:'🟢 Thêm',update:'✏️',delete:'🔴 Xóa'};
+      let desc=`<span class="nh-field">${l.field||l.action}</span>`;
+      if(l.old_value||l.new_value)desc+=`<div class="nh-vals">${l.old_value||'–'} → ${l.new_value||'–'}</div>`;
+      return `<div class="nh-item"><span class="nh-time">${ts}</span> ${icons[l.action]||''} ${desc}</div>`;
+    }).join('');
+    el.innerHTML=html;_nhCache[custId]=html;
+  }catch(e){el.innerHTML='';}
+}
+
 // ── DAILY REPORT ────────────────────────────────
 let _rptText='';
-function openReport(){
+async function openReport(){
   const today=TODAY;
   const todayFmt=today.split('-').reverse().join('/');
   const user=currentUser?currentUser.email.split('@')[0]:'–';
+  const body=document.getElementById('rpt-body');
+  body.innerHTML='<p style="text-align:center;color:#9ca3af;padding:20px;">Đang tải dữ liệu...</p>';
+  document.getElementById('rpt-date').textContent=todayFmt+' · '+user;
+  document.getElementById('report-modal').classList.add('open');
 
-  // Phân nhóm: cần gọi hôm nay = recall<=today hoặc overdue
-  const needCall=rows.filter(r=>r.recall&&r.recall<=today);
-  // Đã xong (nghe máy) = ít nhất 1 trong c01/c06/c12 = done
-  const done=needCall.filter(r=>r.c01==='done'||r.c06==='done'||r.c12==='done');
-  // Không nghe máy / Thuê bao = pending
-  const pending=needCall.filter(r=>(r.c01==='pending'||r.c06==='pending'||r.c12==='pending')&&r.c01!=='done'&&r.c06!=='done'&&r.c12!=='done');
-  // Chưa gọi
-  const notCalled=needCall.filter(r=>!done.includes(r)&&!pending.includes(r));
+  // Lấy audit_logs trong ngày hôm nay
+  let todayLogs=[];
+  if(sb){
+    try{
+      const startOfDay=today+'T00:00:00';
+      const{data}=await sb.from('audit_logs').select('*').gte('created_at',startOfDay).order('created_at',{ascending:false});
+      todayLogs=data||[];
+    }catch(e){}
+  }
 
-  const total=needCall.length;
-  const doneN=done.length,pendN=pending.length,noneN=notCalled.length;
+  // Cuộc gọi trong ngày: log có field = c01/c06/c12 và new_value = done hoặc pending
+  const callLogs=todayLogs.filter(l=>l.field&&['c01','c06','c12'].includes(l.field)&&['done','pending'].includes(l.new_value));
+  // Unique customer IDs đã gọi
+  const calledIds=new Set(callLogs.map(l=>l.customer_id));
+  // Nghe máy = new_value = done
+  const answeredIds=new Set(callLogs.filter(l=>l.new_value==='done').map(l=>l.customer_id));
+  // Không nghe máy = pending (nhưng không có done)
+  const missedIds=new Set([...calledIds].filter(id=>!answeredIds.has(id)));
 
-  // CSAT
-  const rated=rows.filter(r=>r.csat!==''&&r.csat!=null&&!isNaN(Number(r.csat)));
-  const happy=rated.filter(r=>Number(r.csat)>=4);
-  const unhappy=rated.filter(r=>Number(r.csat)<=3);
+  const totalCalled=calledIds.size;
+  const answeredN=answeredIds.size;
+  const missedN=missedIds.size;
+
+  // Tìm row cho từng ID
+  const findRow=id=>rows.find(r=>r.id===sid(id));
+  const answeredRows=[...answeredIds].map(findRow).filter(Boolean);
+  const missedRows=[...missedIds].map(findRow).filter(Boolean);
+
+  // CSAT trong ngày: log có field = csat
+  const csatLogs=todayLogs.filter(l=>l.field==='csat'&&l.new_value);
+  const csatIds=new Set(csatLogs.map(l=>l.customer_id));
+  const csatRows=[...csatIds].map(findRow).filter(Boolean).filter(r=>r.csat!==''&&r.csat!=null);
+  const happy=csatRows.filter(r=>Number(r.csat)>=4);
+  const unhappy=csatRows.filter(r=>Number(r.csat)<=3);
 
   // Build HTML
   let h='';
 
-  // Section 1: Tổng hợp cuộc gọi
+  // Section 1: Cuộc gọi
   h+=`<div class="rpt-section">
-    <div class="rpt-section-title">📞 Tổng hợp cuộc gọi</div>
-    <div class="rpt-row"><span class="rpt-label">Tổng số cần gọi</span><span class="rpt-val">${total}</span></div>
-    <div class="rpt-row"><span class="rpt-label">Đã gọi (nghe máy)</span><span class="rpt-val green">${doneN}/${total}</span></div>
-    <div class="rpt-bar"><div class="rpt-bar-fill" style="width:${total?Math.round(doneN/total*100):0}%;background:#22c55e;"></div></div>
-    <div class="rpt-row"><span class="rpt-label">Không nghe máy / Thuê bao</span><span class="rpt-val yellow">${pendN}/${total}</span></div>`;
-  if(pending.length){
-    h+='<div class="rpt-list">';
-    pending.forEach(r=>{h+=`<div class="rpt-list-item"><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}</span></div>`;});
-    h+='</div>';
-  }
-  h+=`<div class="rpt-row"><span class="rpt-label">Chưa gọi</span><span class="rpt-val gray">${noneN}/${total}</span></div>`;
-  if(notCalled.length){
-    h+='<div class="rpt-list">';
-    notCalled.forEach(r=>{h+=`<div class="rpt-list-item"><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}</span></div>`;});
-    h+='</div>';
+    <div class="rpt-section-title">📞 Tổng hợp cuộc gọi hôm nay</div>`;
+  if(!totalCalled){
+    h+=`<div style="text-align:center;color:#9ca3af;font-size:12px;padding:12px;">Chưa có cuộc gọi nào hôm nay.</div>`;
+  }else{
+    h+=`<div class="rpt-row"><span class="rpt-label">Tổng đã gọi</span><span class="rpt-val">${totalCalled}</span></div>
+    <div class="rpt-row"><span class="rpt-label">Nghe máy</span><span class="rpt-val green">${answeredN}/${totalCalled}</span></div>
+    <div class="rpt-bar"><div class="rpt-bar-fill" style="width:${Math.round(answeredN/totalCalled*100)}%;background:#22c55e;"></div></div>`;
+    if(answeredRows.length){
+      h+='<div class="rpt-list">';
+      answeredRows.forEach(r=>{h+=`<div class="rpt-list-item"><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}</span></div>`;});
+      h+='</div>';
+    }
+    h+=`<div class="rpt-row"><span class="rpt-label">Không nghe máy / Thuê bao</span><span class="rpt-val yellow">${missedN}/${totalCalled}</span></div>`;
+    if(missedRows.length){
+      h+='<div class="rpt-list">';
+      missedRows.forEach(r=>{h+=`<div class="rpt-list-item"><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}</span></div>`;});
+      h+='</div>';
+    }
   }
   h+='</div>';
 
-  // Section 2: Đánh giá khách hàng
+  // Section 2: Đánh giá trong ngày
   h+=`<div class="rpt-section">
-    <div class="rpt-section-title">⭐ Đánh giá khách hàng</div>
-    <div class="rpt-row"><span class="rpt-label">Hài lòng (4-5⭐)</span><span class="rpt-val green">${happy.length} khách</span></div>`;
-  if(happy.length){
-    h+='<div class="rpt-list">';
-    happy.forEach(r=>{
-      const note=r.note?`<div class="rpt-note">💬 ${r.note}</div>`:'';
-      h+=`<div class="rpt-list-item"><div><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐</span>${note}</div></div>`;
-    });
-    h+='</div>';
-  }
-  h+=`<div class="rpt-row"><span class="rpt-label">Không hài lòng (1-3⭐)</span><span class="rpt-val red">${unhappy.length} khách</span></div>`;
-  if(unhappy.length){
-    h+='<div class="rpt-list">';
-    unhappy.forEach(r=>{
-      const note=r.note?`<div class="rpt-note">💬 ${r.note}</div>`:'';
-      h+=`<div class="rpt-list-item"><div><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐</span>${note}</div></div>`;
-    });
-    h+='</div>';
+    <div class="rpt-section-title">⭐ Đánh giá khách hàng hôm nay</div>`;
+  if(!csatRows.length){
+    h+=`<div style="text-align:center;color:#9ca3af;font-size:12px;padding:12px;">Chưa có đánh giá nào hôm nay.</div>`;
+  }else{
+    h+=`<div class="rpt-row"><span class="rpt-label">Hài lòng (4-5⭐)</span><span class="rpt-val green">${happy.length} khách</span></div>`;
+    if(happy.length){
+      h+='<div class="rpt-list">';
+      happy.forEach(r=>{
+        const note=r.note?`<div class="rpt-note">💬 ${r.note}</div>`:'';
+        h+=`<div class="rpt-list-item"><div><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐</span>${note}</div></div>`;
+      });
+      h+='</div>';
+    }
+    h+=`<div class="rpt-row"><span class="rpt-label">Không hài lòng (1-3⭐)</span><span class="rpt-val red">${unhappy.length} khách</span></div>`;
+    if(unhappy.length){
+      h+='<div class="rpt-list">';
+      unhappy.forEach(r=>{
+        const note=r.note?`<div class="rpt-note">💬 ${r.note}</div>`:'';
+        h+=`<div class="rpt-list-item"><div><span class="rpt-cust">→ ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐</span>${note}</div></div>`;
+      });
+      h+='</div>';
+    }
   }
   h+='</div>';
 
-  document.getElementById('rpt-date').textContent=todayFmt+' · '+user;
-  document.getElementById('rpt-body').innerHTML=h;
-  document.getElementById('report-modal').classList.add('open');
+  body.innerHTML=h;
 
-  // Build plain text for copy
+  // Build plain text
   let t=`📋 BÁO CÁO CSKH - ${todayFmt}\nNhân viên: ${user}\n\n`;
   t+=`═══ TỔNG HỢP CUỘC GỌI ═══\n`;
-  t+=`• Tổng số cần gọi: ${total}\n`;
-  t+=`• Đã gọi (nghe máy): ${doneN}/${total}\n`;
-  t+=`• Không nghe máy / Thuê bao: ${pendN}/${total}\n`;
-  pending.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}\n`;});
-  t+=`• Chưa gọi: ${noneN}/${total}\n`;
-  notCalled.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}\n`;});
+  if(!totalCalled){t+=`Chưa có cuộc gọi nào hôm nay.\n`;}
+  else{
+    t+=`• Tổng đã gọi: ${totalCalled}\n`;
+    t+=`• Nghe máy: ${answeredN}/${totalCalled}\n`;
+    answeredRows.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}\n`;});
+    t+=`• Không nghe máy / Thuê bao: ${missedN}/${totalCalled}\n`;
+    missedRows.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}\n`;});
+  }
   t+=`\n═══ ĐÁNH GIÁ KHÁCH HÀNG ═══\n`;
-  t+=`• Hài lòng (4-5⭐): ${happy.length} khách\n`;
-  happy.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐\n`;if(r.note)t+=`    💬 ${r.note}\n`;});
-  t+=`• Không hài lòng (1-3⭐): ${unhappy.length} khách\n`;
-  unhappy.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐\n`;if(r.note)t+=`    💬 ${r.note}\n`;});
+  if(!csatRows.length){t+=`Chưa có đánh giá nào hôm nay.\n`;}
+  else{
+    t+=`• Hài lòng (4-5⭐): ${happy.length} khách\n`;
+    happy.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐\n`;if(r.note)t+=`    💬 ${r.note}\n`;});
+    t+=`• Không hài lòng (1-3⭐): ${unhappy.length} khách\n`;
+    unhappy.forEach(r=>{t+=`  → ${r.gender} ${r.name} – ${r.address}: ${r.csat}⭐\n`;if(r.note)t+=`    💬 ${r.note}\n`;});
+  }
   _rptText=t;
 }
 function closeReport(){document.getElementById('report-modal').classList.remove('open');}
