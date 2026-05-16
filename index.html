@@ -664,10 +664,23 @@ function normalizeRow(r){
   });
 }
 
-// ✅ Auto quá hạn: nếu recall < today và c01/c06/c12 là none/pending → overdue
+// ✅ Auto quá hạn
+// C01: recall < today → overdue (nếu chưa done)
+// C06: date + 6 tháng < today → overdue (nếu chưa done)
+// C12: date + 12 tháng < today → overdue (nếu chưa done)
 function autoOverdue(r){
-  if(!r.recall||r.recall>TODAY) return r;
-  ['c01','c06','c12'].forEach(f=>{if(r[f]==='none'||r[f]==='pending')r[f]='overdue';});
+  // C01 dựa vào ngày gọi lại
+  if(r.recall&&r.recall<TODAY&&(r.c01==='none'||r.c01==='pending'))r.c01='overdue';
+  // C06 dựa vào ngày giao + 6 tháng
+  if(r.date){
+    const d6=new Date(r.date);d6.setMonth(d6.getMonth()+6);
+    const c06Due=d6.toISOString().split('T')[0];
+    if(c06Due<TODAY&&(r.c06==='none'||r.c06==='pending'))r.c06='overdue';
+    // C12 dựa vào ngày giao + 12 tháng
+    const d12=new Date(r.date);d12.setMonth(d12.getMonth()+12);
+    const c12Due=d12.toISOString().split('T')[0];
+    if(c12Due<TODAY&&(r.c12==='none'||r.c12==='pending'))r.c12='overdue';
+  }
   return r;
 }
 
